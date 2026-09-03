@@ -13,8 +13,14 @@ env:
 jobs:
   image:
     name: Get or Build ARM64 Docker Image
-    runs-on: avrea-ubuntu-latest-arm-8-vcpu
+    strategy:
+      matrix:
+        runner:
+          - avrea-ubuntu-latest-arm-8-vcpu
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 360
+    env:
+      BUILDX_CACHE_ENDPOINT: ${{ startsWith(matrix.runner, 'avrea-') && ',url_v2=https://cache.avrea.com/' || '' }}
     permissions:
       contents: read
       packages: write
@@ -36,7 +42,10 @@ jobs:
           tool-cache: true
           swap-storage: false
 
-      - name: Get or build Docker image.
+      - name: Set up Docker Buildx.
+        uses: docker/setup-buildx-action@v4
+
+      - name: Get or prepare Docker image.
         id: image
         env:
           CONTEXT_HASH: ${{ hashFiles('Telegram/build/docker/centos_env/**') }}
@@ -51,6 +60,7 @@ jobs:
 
           IMAGE_REPOSITORY="${IMAGE_REPOSITORY,,}"
           IMAGE_TAG="$IMAGE_REPOSITORY:arm64-$IMAGE_RECIPE_VERSION-$CONTEXT_HASH"
+          echo "image-ref=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
 
           echo "$GH_TOKEN" \
             | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
@@ -70,30 +80,31 @@ jobs:
             poetry install --no-interaction --no-ansi
             DEBUG= LTO= poetry run gen_dockerfile \
               > "$RUNNER_TEMP/centos-env-arm64.Dockerfile"
-
-            docker buildx create \
-              --driver docker-container \
-              --name centos-env-arm64 \
-              --use
-            docker buildx inspect --bootstrap
-            docker buildx build \
-              --platform linux/arm64 \
-              --file "$RUNNER_TEMP/centos-env-arm64.Dockerfile" \
-              --tag "$IMAGE_TAG" \
-              --label \
-                "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
-              --label "org.opencontainers.image.revision=$GITHUB_SHA" \
-              --cache-from type=gha,scope=centos-env-arm64 \
-              --cache-to type=gha,mode=max,scope=centos-env-arm64 \
-              --push \
-              .
+            echo "needs-build=true" >> "$GITHUB_OUTPUT"
           else
             cat "$INSPECT_LOG" >&2
             exit 1
           fi
 
-          docker buildx imagetools inspect "$IMAGE_TAG" >/dev/null
-          echo "image-ref=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+      - name: Build and push Docker image.
+        if: steps.image.outputs.needs-build == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: Telegram/build/docker/centos_env
+          file: ${{ runner.temp }}/centos-env-arm64.Dockerfile
+          platforms: linux/arm64
+          tags: ${{ steps.image.outputs.image-ref }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha${{ env.BUILDX_CACHE_ENDPOINT }},scope=centos-env-arm64
+          cache-to: type=gha${{ env.BUILDX_CACHE_ENDPOINT }},mode=max,scope=centos-env-arm64
+          push: true
+
+      - name: Verify Docker image.
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.image-ref }}
+        run: docker buildx imagetools inspect "$IMAGE_REF" >/dev/null
 
   build:
     name: Build Linux ARM64 Release Package
