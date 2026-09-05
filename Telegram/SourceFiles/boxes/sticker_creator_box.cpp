@@ -322,7 +322,7 @@ void LoadStickerImage(
 struct StickerVideoSource {
 	std::shared_ptr<QTemporaryFile> file;
 	QString path;
-	Media::Video::FileInfo info;
+	Media::Video::Information info;
 	Editor::VideoEditorData editorData;
 	Editor::VideoModifications modifications;
 };
@@ -689,8 +689,8 @@ void RunVideoEditorAndCreate(
 		path = document->filepath(true);
 	}
 	const auto info = path.isEmpty()
-		? Media::Video::FileInfo()
-		: Media::Video::ReadFileInfo(path);
+		? Media::Video::Information()
+		: Media::Video::ReadDecodableInformation(path);
 	if (!info.valid()) {
 		show->showToast(tr::lng_bad_video(tr::now));
 		return;
