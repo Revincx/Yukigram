@@ -63,6 +63,12 @@ enum class AlbumType {
 	File,
 };
 
+struct PreparedFileArchive {
+	QString folder;
+	QString root;
+	QStringList paths;
+};
+
 struct PreparedFile {
 	// File-s can be grouped if 'groupFiles'.
 	// File-s + Photo-s can be grouped if 'groupFiles && !sendImagesAsPhotos'.
@@ -114,6 +120,7 @@ struct PreparedFile {
 	bool spoiler = false;
 	bool sendLargePhotos = false;
 	std::shared_ptr<Media::Encode::Job> animationJob;
+	std::shared_ptr<PreparedFileArchive> archive;
 };
 
 [[nodiscard]] bool CanBeInAlbumType(PreparedFile::Type type, AlbumType album);
@@ -186,6 +193,8 @@ struct PreparedBundle {
 	std::vector<PreparedGroup> groups,
 	SendFilesWay way,
 	bool ctrlShiftEnter);
+[[nodiscard]] std::shared_ptr<PreparedBundle> MakeSingleFileBundle(
+	PreparedList &&list);
 
 [[nodiscard]] int MaxAlbumItems();
 [[nodiscard]] bool ValidateThumbDimensions(int width, int height);

@@ -1047,7 +1047,7 @@ void MainMenu::setupSwipe() {
 	}
 
 	auto update = [=](Ui::Controls::SwipeContextData data) {
-		if (data.translation < 0) {
+		if (data.visualTranslation() < 0) {
 			if (!_swipeBackData.callback) {
 				_swipeBackData = Ui::Controls::SetupSwipeBack(
 					this,
@@ -1066,7 +1066,7 @@ void MainMenu::setupSwipe() {
 	};
 
 	auto init = [=](Ui::Controls::SwipeHandlerInitData data) {
-		if (data.direction != Qt::LeftToRight) {
+		if (data.fingerDirection() != Qt::LeftToRight) {
 			return Ui::Controls::SwipeHandlerFinishData();
 		}
 		if (_emojiStatusPanel && _emojiStatusPanel->hasFocus()) {

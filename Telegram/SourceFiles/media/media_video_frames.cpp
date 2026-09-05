@@ -393,6 +393,7 @@ Information ReadDecodableInformation(
 
 void ExtractFrames(
 		const QString &path,
+		const QByteArray &content,
 		const ExtractRequest &request,
 		ExtractCallback callback) {
 	Expects(callback != nullptr);
@@ -401,7 +402,7 @@ void ExtractFrames(
 		return;
 	}
 	auto source = Source();
-	if (!OpenSource(source, path, QByteArray(), true)) {
+	if (!OpenSource(source, path, content, true)) {
 		return;
 	}
 	auto extractor = Extractor(source, request);
@@ -416,9 +417,13 @@ void ExtractFrames(
 	}
 }
 
-QImage ExtractFrame(const QString &path, crl::time position, QSize box) {
+QImage ExtractFrame(
+		const QString &path,
+		const QByteArray &content,
+		crl::time position,
+		QSize box) {
 	auto result = QImage();
-	ExtractFrames(path, {
+	ExtractFrames(path, content, {
 		.positions = { position },
 		.box = box,
 	}, [&](int index, QImage &&frame) {
