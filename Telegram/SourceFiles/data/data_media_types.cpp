@@ -1085,7 +1085,9 @@ std::unique_ptr<HistoryView::Media> MediaPhoto::createView(
 		message,
 		realParent,
 		_photo,
-		_spoiler && !ShouldRemoveMediaSpoiler(realParent));
+		_spoiler
+			&& (_photo->extendedMediaPreview()
+				|| !ShouldRemoveMediaSpoiler(realParent)));
 }
 
 MediaFile::MediaFile(
