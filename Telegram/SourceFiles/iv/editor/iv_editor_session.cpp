@@ -65,6 +65,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mainwidget.h"
 #include "mainwindow.h"
 #include "menu/menu_send.h"
+#include "settings.h"
 #include "settings/sections/settings_premium.h"
 #include "storage/file_upload.h"
 #include "storage/localimageloader.h"
@@ -4472,7 +4473,8 @@ void ArticleSession::saveRichDraftNow() {
 	}
 	_richDraftAutosaveRetryPending = (_session->api().saveDraftToCloud(
 		not_null{ thread },
-		*cloudDraft) == 0);
+		*cloudDraft) == 0)
+		&& !GetEnhancedBool("disable_sync_draft_to_cloud");
 }
 
 void ArticleSession::startCloseWithDraftSave() {
@@ -4542,7 +4544,11 @@ void ArticleSession::saveRichDraftForClose(uint64 generation) {
 			}
 		});
 	if (!_closeDraftSaveRequestId) {
-		closeWithDraftSaveFailed(generation);
+		if (GetEnhancedBool("disable_sync_draft_to_cloud")) {
+			closeWithDraftSaveDone(generation);
+		} else {
+			closeWithDraftSaveFailed(generation);
+		}
 	}
 }
 

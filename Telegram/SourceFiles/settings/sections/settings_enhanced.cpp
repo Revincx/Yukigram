@@ -199,6 +199,16 @@ constexpr auto kStickerHeightValuesCount = kStickerHeightMaxIndex + 1;
 
 	builder.add(nullptr, [] {
 		return Builder::SearchEntry{
+			.id = u"enhanced/disable-sync-draft-to-cloud"_q,
+			.title = tr::lng_settings_disable_sync_draft_to_cloud(tr::now),
+			.keywords = { u"draft"_q, u"cloud"_q, u"sync"_q, u"local"_q },
+			.deeplink
+				= u"tg://settings/enhanced/disable-sync-draft-to-cloud"_q,
+		};
+	});
+
+	builder.add(nullptr, [] {
+		return Builder::SearchEntry{
 			.id = u"enhanced/force-show-webpage-preview"_q,
 			.title = tr::lng_settings_force_show_webpage_preview(tr::now),
 			.keywords = {
@@ -1100,6 +1110,24 @@ constexpr auto kStickerHeightValuesCount = kStickerHeightMaxIndex + 1;
 			return (toggled != GetEnhancedBool("disable_cloud_draft_sync"));
 		}) | rpl::on_next([=](bool toggled) {
 			SetEnhancedValue("disable_cloud_draft_sync", toggled);
+			EnhancedSettings::Write();
+		}, content->lifetime());
+
+		const auto disableSyncDraftToCloud = AddButtonWithIcon(
+				content,
+				tr::lng_settings_disable_sync_draft_to_cloud(),
+				st::settingsButtonNoIcon);
+		registerHighlight(
+			u"enhanced/disable-sync-draft-to-cloud"_q,
+			disableSyncDraftToCloud);
+		disableSyncDraftToCloud->toggleOn(
+			rpl::single(GetEnhancedBool("disable_sync_draft_to_cloud"))
+		)->toggledChanges(
+		) | rpl::filter([=](bool toggled) {
+			return toggled
+				!= GetEnhancedBool("disable_sync_draft_to_cloud");
+		}) | rpl::on_next([=](bool toggled) {
+			SetEnhancedValue("disable_sync_draft_to_cloud", toggled);
 			EnhancedSettings::Write();
 		}, content->lifetime());
 

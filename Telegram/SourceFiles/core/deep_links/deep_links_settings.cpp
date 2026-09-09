@@ -1832,6 +1832,14 @@ void RegisterSettingsHandlers(Router &router) {
 	});
 
 	router.add(u"settings"_q, {
+		.path = u"enhanced/disable-sync-draft-to-cloud"_q,
+		.action = SettingsControl{
+			::Settings::EnhancedId(),
+			u"enhanced/disable-sync-draft-to-cloud"_q,
+		},
+	});
+
+	router.add(u"settings"_q, {
 		.path = u"enhanced/force-show-webpage-preview"_q,
 		.action = SettingsControl{
 			::Settings::EnhancedId(),

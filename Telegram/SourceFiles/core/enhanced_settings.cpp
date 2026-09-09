@@ -339,6 +339,7 @@ namespace EnhancedSettings {
 		settings.insert(qsl("show_phone_number"), true);
 		settings.insert(qsl("repeater_reply_to_orig_msg"), false);
 		settings.insert(qsl("disable_cloud_draft_sync"), false);
+		settings.insert(qsl("disable_sync_draft_to_cloud"), false);
 		settings.insert(qsl("show_scheduled_button"), false);
 		settings.insert(qsl("stereo_mode"), false);
 		settings.insert(qsl("radio_controller"), "http://localhost:2468");
@@ -412,6 +413,7 @@ namespace EnhancedSettings {
 		settings.insert(qsl("show_phone_number"), GetEnhancedBool("show_phone_number"));
 		settings.insert(qsl("repeater_reply_to_orig_msg"), GetEnhancedBool("repeater_reply_to_orig_msg"));
 		settings.insert(qsl("disable_cloud_draft_sync"), GetEnhancedBool("disable_cloud_draft_sync"));
+		settings.insert(qsl("disable_sync_draft_to_cloud"), GetEnhancedBool("disable_sync_draft_to_cloud"));
 		settings.insert(qsl("show_scheduled_button"), GetEnhancedBool("show_scheduled_button"));
 		settings.insert(qsl("stereo_mode"), GetEnhancedBool("stereo_mode"));
 		settings.insert(qsl("radio_controller"), GetEnhancedString("radio_controller"));

@@ -131,6 +131,9 @@ using UpdatedFileReferences = Data::UpdatedFileReferences;
 [[nodiscard]] bool ShouldSkipPlainDraftCloudSave(
 		not_null<Main::Session*> session,
 		not_null<Data::Thread*> thread) {
+	if (GetEnhancedBool("disable_sync_draft_to_cloud")) {
+		return true;
+	}
 	const auto history = thread->owningHistory();
 	const auto topicRootId = thread->topicRootId();
 	const auto monoforumPeerId = thread->monoforumPeerId();
@@ -2389,6 +2392,13 @@ mtpRequestId ApiWrap::saveDraftToCloud(
 		const Data::Draft &draft,
 		Fn<void()> done,
 		Fn<void(const MTP::Error &)> fail) {
+	if (GetEnhancedBool("disable_sync_draft_to_cloud")) {
+		const auto history = thread->owningHistory();
+		history->draftSavedToCloud(
+			thread->topicRootId(),
+			thread->monoforumPeerId());
+		return 0;
+	}
 	const auto weak = base::make_weak(thread);
 	const auto requestId = savePreparedDraftToCloud(
 		thread,
