@@ -128,6 +128,18 @@ not_null<Settings::Button*> AddRuleLine(
 	return button;
 }
 
+void AddRuleDivider(not_null<Ui::VerticalLayout*> list) {
+	list->add(
+		object_ptr<Ui::PlainShadow>(
+			list,
+			st::menuSeparatorFg),
+		QMargins(
+			st::settingsButtonNoIcon.padding.left(),
+			0,
+			st::settingsButtonRightSkip,
+			0));
+}
+
 void FillRules(
 		not_null<Ui::GenericBox*> box,
 		not_null<Ui::VerticalLayout*> list) {
@@ -143,21 +155,12 @@ void FillRules(
 			style::al_justify);
 		return;
 	}
+	AddRuleDivider(list);
 	for (auto i = 0; i != int(rules.size()); ++i) {
-		if (i) {
-			list->add(
-				object_ptr<Ui::PlainShadow>(
-					list,
-					st::menuSeparatorFg),
-				QMargins(
-					st::settingsButtonNoIcon.padding.left(),
-					0,
-					st::settingsButtonRightSkip,
-					0));
-		}
 		AddRuleLine(list, rules[i])->setClickedCallback([=] {
 			box->getDelegate()->show(Box(EditRuleBox, i));
 		});
+		AddRuleDivider(list);
 	}
 }
 
