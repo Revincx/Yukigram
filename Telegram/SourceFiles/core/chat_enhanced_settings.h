@@ -18,6 +18,8 @@ enum class ChatFeature {
 	RemoveMediaSpoiler,
 	HideBlockedMessages,
 	ShowScheduledButton,
+	DisableCloudDraftSync,
+	DisableSyncDraftToCloud,
 	Count,
 };
 

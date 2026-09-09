@@ -54,6 +54,14 @@ bool ShowScheduledButtonGlobalValue() {
 	return GetEnhancedBool(u"show_scheduled_button"_q);
 }
 
+bool DisableCloudDraftSyncGlobalValue() {
+	return GetEnhancedBool(u"disable_cloud_draft_sync"_q);
+}
+
+bool DisableSyncDraftToCloudGlobalValue() {
+	return GetEnhancedBool(u"disable_sync_draft_to_cloud"_q);
+}
+
 template <typename Callback>
 void ForEachLoadedHistory(
 		not_null<PeerData*> peer,
@@ -129,6 +137,16 @@ constexpr auto kChatFeatureDescriptors = std::array{
 		.feature = ChatFeature::ShowScheduledButton,
 		.storageKey = "show_scheduled_button",
 		.globalValue = ShowScheduledButtonGlobalValue,
+	},
+	ChatFeatureDescriptor{
+		.feature = ChatFeature::DisableCloudDraftSync,
+		.storageKey = "disable_cloud_draft_sync",
+		.globalValue = DisableCloudDraftSyncGlobalValue,
+	},
+	ChatFeatureDescriptor{
+		.feature = ChatFeature::DisableSyncDraftToCloud,
+		.storageKey = "disable_sync_draft_to_cloud",
+		.globalValue = DisableSyncDraftToCloudGlobalValue,
 	},
 };
 static_assert(

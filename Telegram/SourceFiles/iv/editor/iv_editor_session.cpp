@@ -25,6 +25,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/weak_ptr.h"
 #include "boxes/premium_preview_box.h"
 #include "chat_helpers/compose/compose_show.h"
+#include "core/chat_enhanced_settings.h"
 #include "core/application.h"
 #include "core/core_settings.h"
 #include "core/shortcuts.h"
@@ -65,7 +66,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mainwidget.h"
 #include "mainwindow.h"
 #include "menu/menu_send.h"
-#include "settings.h"
 #include "settings/sections/settings_premium.h"
 #include "storage/file_upload.h"
 #include "storage/localimageloader.h"
@@ -4474,7 +4474,9 @@ void ArticleSession::saveRichDraftNow() {
 	_richDraftAutosaveRetryPending = (_session->api().saveDraftToCloud(
 		not_null{ thread },
 		*cloudDraft) == 0)
-		&& !GetEnhancedBool("disable_sync_draft_to_cloud");
+		&& !EnhancedSettings::ResolveChatFeature(
+			history->peer,
+			EnhancedSettings::ChatFeature::DisableSyncDraftToCloud);
 }
 
 void ArticleSession::startCloseWithDraftSave() {
@@ -4544,7 +4546,9 @@ void ArticleSession::saveRichDraftForClose(uint64 generation) {
 			}
 		});
 	if (!_closeDraftSaveRequestId) {
-		if (GetEnhancedBool("disable_sync_draft_to_cloud")) {
+		if (EnhancedSettings::ResolveChatFeature(
+				history->peer,
+				EnhancedSettings::ChatFeature::DisableSyncDraftToCloud)) {
 			closeWithDraftSaveDone(generation);
 		} else {
 			closeWithDraftSaveFailed(generation);

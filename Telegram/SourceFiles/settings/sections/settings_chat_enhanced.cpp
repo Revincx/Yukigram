@@ -46,6 +46,7 @@ using Available = bool (*)(not_null<PeerData*>);
 enum class Group {
 	Messages,
 	Interface,
+	Behavior,
 	Count,
 };
 
@@ -156,6 +157,14 @@ rpl::producer<QString> ShowScheduledButtonTitle() {
 	return tr::lng_settings_show_scheduled_button();
 }
 
+rpl::producer<QString> DisableCloudDraftSyncTitle() {
+	return tr::lng_settings_disable_cloud_draft_sync();
+}
+
+rpl::producer<QString> DisableSyncDraftToCloudTitle() {
+	return tr::lng_settings_disable_sync_draft_to_cloud();
+}
+
 bool ForceShowWebPagePreviewAvailable(not_null<PeerData*> peer) {
 	return !peer->isSelf();
 }
@@ -177,6 +186,10 @@ bool ShowScheduledButtonAvailable(not_null<PeerData*> peer) {
 		& ~ChatRestriction::SendPolls;
 	return !peer->starsPerMessageChecked()
 		&& Data::CanSendAnyOf(peer, rights, false);
+}
+
+bool DraftSyncAvailable(not_null<PeerData*> peer) {
+	return Data::CanSendAnything(peer, false);
 }
 
 constexpr auto kFeatureDescriptors = std::array{
@@ -210,6 +223,18 @@ constexpr auto kFeatureDescriptors = std::array{
 		.title = ShowScheduledButtonTitle,
 		.available = ShowScheduledButtonAvailable,
 	},
+	FeatureDescriptor{
+		.feature = Feature::DisableCloudDraftSync,
+		.group = Group::Behavior,
+		.title = DisableCloudDraftSyncTitle,
+		.available = DraftSyncAvailable,
+	},
+	FeatureDescriptor{
+		.feature = Feature::DisableSyncDraftToCloud,
+		.group = Group::Behavior,
+		.title = DisableSyncDraftToCloudTitle,
+		.available = DraftSyncAvailable,
+	},
 };
 static_assert(
 	kFeatureDescriptors.size()
@@ -218,6 +243,7 @@ static_assert(
 constexpr auto kGroups = std::array{
 	Group::Messages,
 	Group::Interface,
+	Group::Behavior,
 };
 static_assert(
 	kGroups.size()
@@ -229,6 +255,8 @@ rpl::producer<QString> GroupTitle(Group group) {
 		return tr::lng_settings_messages();
 	case Group::Interface:
 		return tr::lng_settings_interface();
+	case Group::Behavior:
+		return tr::lng_settings_behavior();
 	case Group::Count:
 		break;
 	}

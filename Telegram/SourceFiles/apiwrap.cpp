@@ -98,6 +98,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "window/window_session_controller.h"
 #include "inline_bots/inline_bot_result.h"
 #include "chat_helpers/message_field.h"
+#include "core/chat_enhanced_settings.h"
 #include "ui/item_text_options.h"
 #include "ui/text/text_utilities.h"
 #include "ui/chat/attach/attach_prepare.h"
@@ -131,19 +132,21 @@ using UpdatedFileReferences = Data::UpdatedFileReferences;
 [[nodiscard]] bool ShouldSkipPlainDraftCloudSave(
 		not_null<Main::Session*> session,
 		not_null<Data::Thread*> thread) {
-	if (GetEnhancedBool("disable_sync_draft_to_cloud")) {
-		return true;
-	}
 	const auto history = thread->owningHistory();
 	const auto topicRootId = thread->topicRootId();
 	const auto monoforumPeerId = thread->monoforumPeerId();
+	if (EnhancedSettings::ResolveChatFeature(
+			history->peer,
+			EnhancedSettings::ChatFeature::DisableSyncDraftToCloud)) {
+		return true;
+	}
 	const auto cloudDraft = history->cloudDraft(topicRootId, monoforumPeerId);
-	return (Iv::Editor::IsComposeBoxOpen(
+	return Iv::Editor::IsComposeBoxOpen(
 			session,
 			history->peer->id,
 			topicRootId,
 			monoforumPeerId)
-		|| (cloudDraft && cloudDraft->hasRichMessage()));
+		|| (cloudDraft && cloudDraft->hasRichMessage());
 }
 
 [[nodiscard]] std::shared_ptr<ChatHelpers::Show> ShowForPeer(
@@ -2392,8 +2395,10 @@ mtpRequestId ApiWrap::saveDraftToCloud(
 		const Data::Draft &draft,
 		Fn<void()> done,
 		Fn<void(const MTP::Error &)> fail) {
-	if (GetEnhancedBool("disable_sync_draft_to_cloud")) {
-		const auto history = thread->owningHistory();
+	const auto history = thread->owningHistory();
+	if (EnhancedSettings::ResolveChatFeature(
+			history->peer,
+			EnhancedSettings::ChatFeature::DisableSyncDraftToCloud)) {
 		history->draftSavedToCloud(
 			thread->topicRootId(),
 			thread->monoforumPeerId());

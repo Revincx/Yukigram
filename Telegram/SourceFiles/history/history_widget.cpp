@@ -873,7 +873,9 @@ HistoryWidget::HistoryWidget(
 			updateBotKeyboard(update.history);
 		}
 		if (flags & HistoryUpdateFlag::CloudDraft) {
-			if (GetEnhancedBool("disable_cloud_draft_sync")) {
+			if (EnhancedSettings::ResolveChatFeature(
+					update.history->peer,
+					EnhancedSettings::ChatFeature::DisableCloudDraftSync)) {
 				return;
 			}
 			applyCloudDraft(update.history);

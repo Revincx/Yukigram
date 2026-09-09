@@ -10,6 +10,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_text_entities.h"
 #include "ui/widgets/fields/input_field.h"
 #include "chat_helpers/message_field.h"
+#include "core/chat_enhanced_settings.h"
 #include "history/history.h"
 #include "history/history_widget.h"
 #include "history/history_item_components.h"
@@ -166,7 +167,9 @@ void ApplyPeerCloudDraft(
 	cloudDraft->richMessage = richMessage;
 	cloudDraft->richMessageSummary = Iv::FlattenRichPageSummary(richMessage);
 
-	if (GetEnhancedBool("disable_cloud_draft_sync")) {
+	if (EnhancedSettings::ResolveChatFeature(
+			history->peer,
+			EnhancedSettings::ChatFeature::DisableCloudDraftSync)) {
 		return;
 	}
 
@@ -185,7 +188,9 @@ void ClearPeerCloudDraft(
 		return;
 	}
 
-	if (GetEnhancedBool("disable_cloud_draft_sync")) {
+	if (EnhancedSettings::ResolveChatFeature(
+			history->peer,
+			EnhancedSettings::ChatFeature::DisableCloudDraftSync)) {
 		return;
 	}
 
