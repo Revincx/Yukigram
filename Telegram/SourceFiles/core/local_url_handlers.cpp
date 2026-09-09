@@ -1684,7 +1684,7 @@ bool ShowNya(
 		Window::SessionController *controller,
 		const Match &match,
 		const QVariant &context) {
-	Ui::Toast::Show("Meow >.<");
+	Ui::Toast::Show(tr::lng_tg_nya_toast(tr::now));
 	return true;
 }
 
