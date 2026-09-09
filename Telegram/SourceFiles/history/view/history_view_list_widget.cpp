@@ -593,7 +593,8 @@ ListWidget::ListWidget(
 		}, lifetime());
 	}
 	if (senderOnlineGroup()) {
-		EnhancedSettings::ShowGroupSenderOnlineStatusValue(
+		EnhancedSettings::Watch(
+			EnhancedSettings::Option::ShowGroupSenderOnlineStatus
 		) | rpl::skip(
 			1
 		) | rpl::on_next([=] {
@@ -3400,7 +3401,7 @@ float64 ListWidget::senderOnlineProgress(not_null<PeerData*> peer) {
 	if (!user) {
 		return 0.;
 	}
-	const auto enabled = EnhancedSettings::ShowGroupSenderOnlineStatus();
+	const auto enabled = EnhancedSettings::Get(EnhancedSettings::Option::ShowGroupSenderOnlineStatus);
 	const auto i = _senderOnline.find(user);
 	if (!enabled && i == end(_senderOnline)) {
 		return 0.;
@@ -3422,7 +3423,7 @@ float64 ListWidget::senderOnlineProgress(not_null<PeerData*> peer) {
 }
 
 void ListWidget::updateSenderOnline(not_null<UserData*> user) {
-	const auto shown = EnhancedSettings::ShowGroupSenderOnlineStatus()
+	const auto shown = EnhancedSettings::Get(EnhancedSettings::Option::ShowGroupSenderOnlineStatus)
 		&& Data::IsUserOnline(user);
 	if (shown) {
 		user->owner().watchForOffline(user);
@@ -3464,7 +3465,7 @@ void ListWidget::updateSenderOnlineSetting() {
 	for (const auto &user : users) {
 		updateSenderOnline(user);
 	}
-	if (!EnhancedSettings::ShowGroupSenderOnlineStatus()) {
+	if (!EnhancedSettings::Get(EnhancedSettings::Option::ShowGroupSenderOnlineStatus)) {
 		return;
 	}
 	const auto visibleTop = _visibleTop;

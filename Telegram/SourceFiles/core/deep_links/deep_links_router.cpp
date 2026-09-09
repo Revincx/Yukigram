@@ -175,6 +175,11 @@ Result Router::executeAction(const Action &action, const Context &ctx) {
 		if (!ctx.controller) {
 			return Result::NeedsAuth;
 		}
+		if (ctx.params.contains(u"value"_q)) {
+			return s.valueHandler
+				? s.valueHandler(ctx)
+				: Result::Unsupported;
+		}
 		if (!s.controlId.isEmpty()) {
 			ctx.controller->setHighlightControlId(s.controlId);
 		}

@@ -67,6 +67,5 @@ int32 gAutoDownloadGif = 0;
 bool gEnhancedFirstRun = true;
 bool gVoiceChatPinned = false;
 QList<int64> gBlockList;
-EnhancedSetting gEnhancedOptions;
 
 int gAlwaysDeleteFor = 0;

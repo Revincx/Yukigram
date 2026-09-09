@@ -50,7 +50,7 @@ ScreenshotProtection::ScreenshotProtection() {
 	) | rpl::on_next([=](bool active) {
 		apply(active);
 	}, _lifetime);
-	EnhancedSettings::AllowScreenshotsValue(
+	EnhancedSettings::Watch(EnhancedSettings::Option::AllowScreenshots
 	) | rpl::on_next([=] {
 		refresh();
 	}, _lifetime);
@@ -98,7 +98,7 @@ rpl::producer<bool> ScreenshotProtection::activeValue() const {
 }
 
 void ScreenshotProtection::refresh() {
-	_active = !EnhancedSettings::AllowScreenshots()
+	_active = !EnhancedSettings::Get(EnhancedSettings::Option::AllowScreenshots)
 		&& ranges::any_of(_reasons, [](const auto &reason) {
 			return reason.second;
 		});

@@ -616,7 +616,7 @@ void SetupRows(
 		controller->window().activate();
 	};
 
-	if (GetEnhancedBool("show_phone_number")) {
+	if (EnhancedSettings::Get(EnhancedSettings::Option::ShowPhoneNumber)) {
 		const auto phoneButton = AddRow(
 			container,
 			tr::lng_settings_phone_label(),

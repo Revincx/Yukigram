@@ -28,6 +28,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/username_box.h"
 #include "core/application.h"
 #include "core/click_handler_types.h"
+#include "core/enhanced_settings.h"
 #include "data/data_user.h"
 #include "data/notify/data_notify_settings.h"
 #include "info/info_memento.h"
@@ -80,6 +81,53 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 namespace Core::DeepLinks {
 namespace {
+
+Result HandleEnhancedValue(
+		const Context &ctx,
+		EnhancedSettings::OptionId id) {
+	if (!ctx.controller) {
+		return Result::NeedsAuth;
+	}
+	const auto parsed = EnhancedSettings::ParseSharedValue(id, ctx.params);
+	if (!parsed) {
+		return Result::Unsupported;
+	}
+	const auto pending = *parsed;
+	const auto restart = EnhancedSettings::DescriptorFor(id).restartRequired
+		&& !EnhancedSettings::IsCurrentValue(pending);
+	const auto controller = ctx.controller;
+	controller->show(Box([=](not_null<Ui::GenericBox*> box) {
+		const auto optionTitle = EnhancedSettings::OptionTitle(pending.id);
+		Ui::ConfirmBox(box, Ui::ConfirmBoxArgs{
+			.text = restart
+				? tr::lng_settings_apply_shared_value_restart(
+					tr::now,
+					lt_option,
+					optionTitle)
+				: tr::lng_settings_apply_shared_value(
+					tr::now,
+					lt_option,
+					optionTitle),
+			.confirmed = [=](Fn<void()> close) {
+				const auto changed = EnhancedSettings::ApplyOption(
+					controller,
+					pending.id,
+					pending.value);
+				if (!changed
+					|| !EnhancedSettings::DescriptorFor(pending.id)
+						.restartRequired) {
+					controller->setHighlightControlId(
+						EnhancedSettings::ControlId(pending.id));
+					controller->showSettings(::Settings::EnhancedId());
+				}
+				close();
+			},
+			.confirmText = tr::lng_settings_apply(),
+			.title = tr::lng_settings_apply_shared_value_title(),
+		});
+	}));
+	return Result::Handled;
+}
 
 Result ShowLanguageBox(const Context &ctx, const QString &highlightId = QString()) {
 	static auto Guard = base::binary_guard();
@@ -1767,333 +1815,22 @@ void RegisterSettingsHandlers(Router &router) {
 		.action = SettingsSection{ ::Settings::EnhancedId() },
 	});
 
-	router.add(u"settings"_q, {
-		.path = u"enhanced/show-message-id"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/show-message-id"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/rich-message-blocks-limit"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/rich-message-blocks-limit"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/sticker-height"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/sticker-height"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/show-similar-on-joined"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/show-similar-on-joined"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/more-right-action-comments"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/more-right-action-comments"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/extra-context-menu-options"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/extra-context-menu-options"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/repeater-reply-to-original"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/repeater-reply-to-original"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/disable-cloud-draft-sync"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/disable-cloud-draft-sync"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/disable-sync-draft-to-cloud"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/disable-sync-draft-to-cloud"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/force-show-webpage-preview"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/force-show-webpage-preview"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/disable-auto-fetch-webpage-preview"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/disable-auto-fetch-webpage-preview"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/remove-media-spoiler"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/remove-media-spoiler"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/hide-delete-for-others-checkbox"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/hide-delete-for-others-checkbox"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/show-media-metadata"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/show-media-metadata"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/send-comment-after-forwarding"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/send-comment-after-forwarding"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/disable-link-warning"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/disable-link-warning"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/disable-premium-animation"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/disable-premium-animation"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/disable-global-search"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/disable-global-search"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/show-group-sender-avatar"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/show-group-sender-avatar"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/show-group-sender-online-status"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/show-group-sender-online-status"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/use-gt-api"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/use-gt-api"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/translate-to-tc"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/translate-to-tc"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/show-seconds"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/show-seconds"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/hide-blocked-messages"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/hide-blocked-messages"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/show-emoji-button-as-text"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/show-emoji-button-as-text"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/show-scheduled-button"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/show-scheduled-button"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/radio-controller"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/radio-controller"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/auto-unmute"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/auto-unmute"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/bitrate-controller"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/bitrate-controller"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/enable-hd-video"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/enable-hd-video"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/mpris-call-hangup"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/mpris-call-hangup"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/show-peer-id"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/show-peer-id"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/hide-all-chats"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/hide-all-chats"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/replace-edit-button"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/replace-edit-button"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/skip-message"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/skip-message"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/hide-counter"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/hide-counter"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/hide-stories"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/hide-stories"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/hide-star-ratings"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/hide-star-ratings"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/force-mobile"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/force-mobile"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/community-chat-click"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/community-chat-click"_q,
-		},
-	});
-
-	router.add(u"settings"_q, {
-		.path = u"enhanced/link-preview-replacements"_q,
-		.action = SettingsControl{
-			::Settings::EnhancedId(),
-			u"enhanced/link-preview-replacements"_q,
-		},
-	});
+	for (const auto &descriptor : EnhancedSettings::Descriptors()) {
+		const auto controlId = EnhancedSettings::ControlId(descriptor.id);
+		if (controlId.isEmpty()) {
+			continue;
+		}
+		router.add(u"settings"_q, {
+			.path = controlId,
+			.action = SettingsControl{
+				::Settings::EnhancedId(),
+				controlId,
+				[id = descriptor.id](const Context &ctx) {
+					return HandleEnhancedValue(ctx, id);
+				},
+			},
+		});
+	}
 
 	router.add(u"settings"_q, {
 		.path = u"enhanced/show-server-config"_q,

@@ -790,27 +790,29 @@ void MainMenu::setupMenu() {
 	_showPhoneToggle = addAction(
 		tr::lng_settings_show_phone_number(),
 		{ &st::menuIconPhone }
-	)->toggleOn(rpl::single(GetEnhancedBool("show_phone_number")));
+	)->toggleOn(rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::ShowPhoneNumber)));
 
 	_showPhoneToggle->toggledChanges(
 	) | rpl::filter([=](bool showPhone) {
-		return (showPhone != GetEnhancedBool("show_phone_number"));
+		return (showPhone != EnhancedSettings::Get(EnhancedSettings::Option::ShowPhoneNumber));
 	}) | rpl::on_next([=](bool showPhone) {
-		SetEnhancedValue("show_phone_number", !GetEnhancedBool("show_phone_number"));
-		EnhancedSettings::Write();
+		EnhancedSettings::Set(
+			EnhancedSettings::Option::ShowPhoneNumber,
+			showPhone);
 	}, _showPhoneToggle->lifetime());
 
 	_screenshotToggle = addAction(
 		tr::lng_settings_screen_shot_mode(),
 		{ &st::menuIconLock }
-	)->toggleOn(rpl::single(GetEnhancedBool("screenshot_mode")));
+	)->toggleOn(rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::ScreenshotMode)));
 
 	_screenshotToggle->toggledChanges(
 	) | rpl::filter([=](bool screenShotMode) {
-		return (screenShotMode != GetEnhancedBool("screenshot_mode"));
+		return (screenShotMode != EnhancedSettings::Get(EnhancedSettings::Option::ScreenshotMode));
 	}) | rpl::on_next([=](bool screenShotMode) {
-		SetEnhancedValue("screenshot_mode", !GetEnhancedBool("screenshot_mode"));
-		EnhancedSettings::Write();
+		EnhancedSettings::Set(
+			EnhancedSettings::Option::ScreenshotMode,
+			screenShotMode);
 	}, lifetime());
 
 	Core::App().settings().systemDarkModeValue(

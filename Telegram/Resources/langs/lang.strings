@@ -8837,6 +8837,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_settings_use_gt_api" = "Use Google Translate";
 "lng_settings_translate_to_tc" = "使用正體中文翻譯訊息";
 "lng_settings_screen_shot_mode" = "Screenshot Mode";
+"lng_settings_allow_screenshots" = "Allow screenshots";
 "lng_settings_hide_star_ratings" = "Hide user star ratings";
 "lng_settings_show_peer_id" = "Show Peer ID";
 
@@ -8851,6 +8852,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 "lng_settings_enable_hd_video" = "Higher video bitrate";
 "lng_hd_video_hint" = "Video bitrate is changed! Rejoin a voice chat if you've already joined.";
+"lng_settings_share_current_setting" = "Share current setting";
+"lng_settings_apply_shared_value_title" = "Import enhanced setting?";
+"lng_settings_apply_shared_value" = "This link will overwrite the current value this enhanced option: \n\n{option}";
+"lng_settings_apply_shared_value_restart" = "This link will overwrite the current value of this enhanced option: \n\n{option}\n\nThe app will restart immediately to apply the change.";
 
 "lng_bitrate_controller" = "Audio bitrate";
 "lng_bitrate_controller_desc" = "Warning: changing this parameter to high values may affect user on slow networks.";

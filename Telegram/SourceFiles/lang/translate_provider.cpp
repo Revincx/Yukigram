@@ -47,7 +47,7 @@ std::unique_ptr<TranslateProvider> CreateTranslateProvider(
 }
 
 QString TranslateProviderTargetCode(LanguageId to) {
-	return GetEnhancedBool("translate_to_tc")
+	return EnhancedSettings::Get(EnhancedSettings::Option::TranslateToTc)
 		? u"zh-Hant"_q
 		: to.twoLetterCode();
 }

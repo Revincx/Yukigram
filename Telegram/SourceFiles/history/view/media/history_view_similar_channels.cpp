@@ -136,7 +136,7 @@ void SimilarChannels::clickHandlerPressedChanged(
 }
 
 void SimilarChannels::draw(Painter &p, const PaintContext &context) const {
-	if (!(_toggled == GetEnhancedBool("show_similar_on_joined"))) {
+	if (!(_toggled == EnhancedSettings::Get(EnhancedSettings::Option::ShowSimilarOnJoined))) {
 		return;
 	}
 	const auto large = Ui::BubbleCornerRounding::Large;

@@ -279,7 +279,7 @@ constexpr auto kStorySavePromoDuration = 3 * crl::time(1000);
 		PhotoData *photo,
 		DocumentData *document,
 		::Media::Video::Information streamingInformation) {
-	if (!GetEnhancedBool("show_media_metadata")) {
+	if (!EnhancedSettings::Get(EnhancedSettings::Option::ShowMediaMetadata)) {
 		return QString();
 	}
 	auto parts = QStringList();
@@ -331,7 +331,7 @@ constexpr auto kStorySavePromoDuration = 3 * crl::time(1000);
 
 [[nodiscard]] QString DocumentMetadataFlags(
 		not_null<DocumentData*> document) {
-	if (!GetEnhancedBool("show_media_metadata")) {
+	if (!EnhancedSettings::Get(EnhancedSettings::Option::ShowMediaMetadata)) {
 		return QString();
 	}
 	auto flags = QStringList();
@@ -1051,7 +1051,7 @@ OverlayWidget::OverlayWidget()
 	) | rpl::on_next([=] {
 		Platform::SetWindowScreenshotProtection(_window, _screenshotProtected);
 	}, lifetime());
-	EnhancedSettings::AllowScreenshotsValue(
+	EnhancedSettings::Watch(EnhancedSettings::Option::AllowScreenshots
 	) | rpl::skip(1) | rpl::on_next([=] {
 		refreshScreenshotProtection();
 	}, lifetime());
@@ -6233,7 +6233,7 @@ void OverlayWidget::setSystemMediaControls(
 }
 
 bool OverlayWidget::contentNeedsScreenshotProtection() const {
-	if (EnhancedSettings::AllowScreenshots()) {
+	if (EnhancedSettings::Get(EnhancedSettings::Option::AllowScreenshots)) {
 		return false;
 	}
 	if (const auto story = _stories ? _stories->story() : nullptr) {

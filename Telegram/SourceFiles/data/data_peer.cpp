@@ -379,7 +379,7 @@ void PeerData::updateNameDelayed(
 }
 
 not_null<Ui::EmptyUserpic*> PeerData::ensureEmptyUserpic() const {
-	if (!_userpicEmpty || GetEnhancedBool("screenshot_mode") != _previousMode) {
+	if (!_userpicEmpty || EnhancedSettings::Get(EnhancedSettings::Option::ScreenshotMode) != _previousMode) {
 		const auto user = asUser();
 		_userpicEmpty = std::make_unique<Ui::EmptyUserpic>(
 			Ui::EmptyUserpic::UserpicColor(colorIndex()),
@@ -468,7 +468,7 @@ void PeerData::paintUserpic(
 	const auto size = context.size;
 	const auto cloud = userpicCloudImage(view);
 	const auto shouldLoad = cloud
-		&& (!GetEnhancedBool("screenshot_mode")
+		&& (!EnhancedSettings::Get(EnhancedSettings::Option::ScreenshotMode)
 			|| isVerified()
 			|| isServiceUser());
 	const auto ratio = style::DevicePixelRatio();
@@ -1328,14 +1328,14 @@ const QString &PeerData::topBarNameText() const {
 	if (const auto to = migrateTo()) {
 		return to->topBarNameText();
 	} else if (const auto user = asUser()) {
-		if (!user->nameOrPhone.isEmpty() && !GetEnhancedBool("screenshot_mode")) {
+		if (!user->nameOrPhone.isEmpty() && !EnhancedSettings::Get(EnhancedSettings::Option::ScreenshotMode)) {
 			return user->nameOrPhone;
 		}
 	}
 	if (isLoaded()
 		&& !isServiceUser()
 		&& !isVerified()
-		&& GetEnhancedBool("screenshot_mode")) {
+		&& EnhancedSettings::Get(EnhancedSettings::Option::ScreenshotMode)) {
 		if (const auto user = asUser()) {
 			if (user->isInaccessible()) {
 				return _name;
@@ -1371,7 +1371,7 @@ const QString &PeerData::name() const {
 	if (isLoaded()
 		&& !isServiceUser()
 		&& !isVerified()
-		&& GetEnhancedBool("screenshot_mode")) {
+		&& EnhancedSettings::Get(EnhancedSettings::Option::ScreenshotMode)) {
 		if (const auto user = asUser()) {
 			if (user->isInaccessible()) {
 				return _name;
@@ -1566,7 +1566,7 @@ void PeerData::setEmojiStatus(EmojiStatusId emojiStatusId, TimeId until) {
 }
 
 EmojiStatusId PeerData::emojiStatusId() const {
-	if (GetEnhancedBool("screenshot_mode")) {
+	if (EnhancedSettings::Get(EnhancedSettings::Option::ScreenshotMode)) {
 		return EmojiStatusId();
 	}
 	return _emojiStatusId;

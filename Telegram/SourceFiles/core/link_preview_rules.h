@@ -28,6 +28,10 @@ public:
 	[[nodiscard]] QJsonArray toJson() const;
 	[[nodiscard]] QString replaceDomain(const QString &link) const;
 
+	friend bool operator==(const LinkPreviewRules &a, const LinkPreviewRules &b) {
+		return a._rules == b._rules;
+	}
+
 private:
 	std::vector<LinkPreviewRule> _rules;
 	std::vector<QRegularExpression> _patterns;

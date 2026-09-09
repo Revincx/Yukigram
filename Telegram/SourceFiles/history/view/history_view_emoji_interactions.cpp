@@ -127,7 +127,7 @@ bool EmojiInteractions::playPremiumEffect(
 	if (const auto media = view->media()) {
 		if (const auto document = media->getDocument()) {
 			if (document->isPremiumSticker()
-				&& !GetEnhancedBool("disable_premium_animation")) {
+				&& !EnhancedSettings::Get(EnhancedSettings::Option::DisablePremiumAnimation)) {
 				play(
 					QString(),
 					view,

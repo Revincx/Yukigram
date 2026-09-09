@@ -493,7 +493,7 @@ void ChatFilters::received(const QVector<MTPDialogFilter> &list) {
 	auto changed = false;
 	for (const auto &filter : list) {
 		auto parsed = ChatFilter::FromTL(filter, _owner);
-		if (GetEnhancedBool("hide_all_chats") && parsed.id() == 0 && list.size() > 1) {
+		if (EnhancedSettings::Get(EnhancedSettings::Option::HideAllChats) && parsed.id() == 0 && list.size() > 1) {
 			continue;
 		}
 		const auto b = begin(_list) + position;
@@ -531,7 +531,7 @@ void ChatFilters::apply(const MTPUpdate &update) {
 	update.match([&](const MTPDupdateDialogFilter &data) {
 		if (const auto filter = data.vfilter()) {
 			auto parsed = ChatFilter::FromTL(*filter, _owner);
-			if (GetEnhancedBool("hide_all_chats") && parsed.id() == 0) {
+			if (EnhancedSettings::Get(EnhancedSettings::Option::HideAllChats) && parsed.id() == 0) {
 				return;
 			}
 			set(parsed);
@@ -915,7 +915,7 @@ FilterId ChatFilters::defaultId() const {
 FilterId ChatFilters::lookupId(int index) const {
 	Expects(index >= 0 && index < _list.size());
 
-	if (_owner->session().user()->isPremium() || !_list.front().id() || GetEnhancedBool("hide_all_chats")) {
+	if (_owner->session().user()->isPremium() || !_list.front().id() || EnhancedSettings::Get(EnhancedSettings::Option::HideAllChats)) {
 		return _list[index].id();
 	}
 	const auto i = ranges::find(_list, FilterId(0), &ChatFilter::id);

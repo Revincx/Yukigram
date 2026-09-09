@@ -194,7 +194,7 @@ Instance::Instance()
 
 	using Command = base::Platform::SystemMediaControls::Command;
 
-	_controls->commandRequests() | rpl::filter([](auto unused) { return GetEnhancedBool("mpris_call_hangup"); }) | rpl::on_next([=](Command command) {
+	_controls->commandRequests() | rpl::filter([](auto unused) { return EnhancedSettings::Get(EnhancedSettings::Option::MprisCallHangup); }) | rpl::on_next([=](Command command) {
 		switch (command) {
 		case Command::PlayPause: [[fallthrough]];
 		case Command::Play: [[fallthrough]];
@@ -247,7 +247,7 @@ Instance::Instance()
 		}
 	};
 
-	currentCallValue() | rpl::filter([](auto unused) { return GetEnhancedBool("mpris_call_hangup"); }) | rpl::on_next([=](Call *current_call) {
+	currentCallValue() | rpl::filter([](auto unused) { return EnhancedSettings::Get(EnhancedSettings::Option::MprisCallHangup); }) | rpl::on_next([=](Call *current_call) {
 		setup_controls(current_call);
 		if (!current_call) {
 			return;
@@ -260,10 +260,10 @@ Instance::Instance()
 		set_title(user->username(), user->id, user->firstName);
 		update_call_state(current_call->state());
 
-		current_call->stateValue() | rpl::filter([](auto unused) { return GetEnhancedBool("mpris_call_hangup"); }) | rpl::on_next(update_call_state, current_call->lifetime());
+		current_call->stateValue() | rpl::filter([](auto unused) { return EnhancedSettings::Get(EnhancedSettings::Option::MprisCallHangup); }) | rpl::on_next(update_call_state, current_call->lifetime());
 	}, _lifetime);
 
-	currentGroupCallValue() | rpl::filter([](auto unused) { return GetEnhancedBool("mpris_call_hangup"); }) | rpl::on_next([=](GroupCall *current_call) {
+	currentGroupCallValue() | rpl::filter([](auto unused) { return EnhancedSettings::Get(EnhancedSettings::Option::MprisCallHangup); }) | rpl::on_next([=](GroupCall *current_call) {
 		setup_controls(current_call);
 		if (!current_call) {
 			return;

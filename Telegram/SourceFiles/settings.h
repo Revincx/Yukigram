@@ -8,10 +8,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #pragma once
 
 #include "base/integration.h"
+#include "core/enhanced_settings.h"
 #include "ui/style/style_core.h"
-
-#include <QJsonArray>
-#include <QJsonObject>
 
 #define DeclareReadSetting(Type, Name) extern Type g##Name; \
 inline const Type &c##Name() { \
@@ -145,78 +143,3 @@ inline void ValidateScale() {
 DeclareSetting(bool, EnhancedFirstRun);
 DeclareSetting(bool, VoiceChatPinned);
 DeclareSetting(QList<int64>, BlockList);
-typedef QHash<QString, QVariant> EnhancedSetting;
-DeclareSetting(EnhancedSetting, EnhancedOptions);
-
-enum class ExtraContextMenuOption : int {
-	Repeater = 1,
-	HideMessage = 2,
-	ViewAsJson = 3,
-	MoreForward = 4,
-};
-
-inline bool GetEnhancedBool(const QString& key) {
-	if (!gEnhancedOptions.contains(key)) {
-		return false;
-	}
-	return gEnhancedOptions[key].toBool();
-}
-
-inline int GetEnhancedInt(const QString& key) {
-	if (!gEnhancedOptions.contains(key)) {
-		return 0;
-	}
-	return gEnhancedOptions[key].toInt();
-}
-
-inline QString GetEnhancedString(const QString& key) {
-	if (!gEnhancedOptions.contains(key)) {
-		return {};
-	}
-	return gEnhancedOptions[key].toString();
-}
-
-inline QList<int> GetEnhancedIntList(const QString& key) {
-	if (!gEnhancedOptions.contains(key)) {
-		return {};
-	}
-	return gEnhancedOptions[key].value<QList<int>>();
-}
-
-inline bool HasExtraContextMenuOption(ExtraContextMenuOption value) {
-	return GetEnhancedIntList("extra_context_menu_options").contains(static_cast<int>(value));
-}
-
-inline void SetEnhancedValue(const QString& key, const QVariant& value) {
-	gEnhancedOptions.insert(key, value);
-}
-
-inline bool blockExist(int64 id) {
-	if (cBlockList().contains(id)) {
-		return true;
-	}
-	return false;
-}
-
-inline void loadSettings(QJsonObject settings) {
-	for (const auto & key : settings.keys()) {
-		if (settings[key].type() == QJsonValue::Bool) {
-			gEnhancedOptions.insert(key, settings[key].toBool());
-		}
-		else if (settings[key].type() == QJsonValue::Double) {
-			gEnhancedOptions.insert(key, settings[key].toInt());
-		}
-		else if (settings[key].type() == QJsonValue::String) {
-			gEnhancedOptions.insert(key, settings[key].toString());
-		}
-		else if (settings[key].type() == QJsonValue::Array) {
-			QList<int> list;
-			for (const auto &v : settings[key].toArray()) {
-				if (v.isDouble()) {
-					list.append(v.toInt());
-				}
-			}
-			gEnhancedOptions.insert(key, QVariant::fromValue(list));
-		}
-	}
-}

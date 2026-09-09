@@ -48,7 +48,7 @@ constexpr auto kBlurRadius = 24;
 
 [[nodiscard]] bool ShowGroupSenderAvatar(PeerData *peer) {
 	return peer
-		&& GetEnhancedBool("show_group_sender_avatar")
+		&& EnhancedSettings::Get(EnhancedSettings::Option::ShowGroupSenderAvatar)
 		&& !peer->isForum()
 		&& (peer->isChat() || peer->isMegagroup());
 }
@@ -476,7 +476,7 @@ void Row::updateCornerBadgeShown(
 	const auto now = user ? base::unixtime::now() : TimeId();
 	const auto channel = user ? nullptr : peer->asChannel();
 	const auto nextLayer = [&] {
-		if (GetEnhancedBool("screenshot_mode")) {
+		if (EnhancedSettings::Get(EnhancedSettings::Option::ScreenshotMode)) {
 			return kNoneLayer;
 		} else if (hasUnreadBadgesAbove) {
 			return kNoneLayer;
@@ -751,7 +751,7 @@ void Row::paintUserpic(
 		? ((peer->isUser() || peer->isChannel()) ? peer : nullptr)
 		: nullptr;
 	const auto storiesFolder = peer ? nullptr : _id.folder();
-	const auto storiesHas = GetEnhancedBool("hide_stories") ? false : storiesPeer
+	const auto storiesHas = EnhancedSettings::Get(EnhancedSettings::Option::HideStories) ? false : storiesPeer
 		? storiesPeer->hasActiveStories()
 		: storiesFolder
 		? (storiesFolder->storiesCount() > 0)

@@ -2637,7 +2637,7 @@ void ChatWidget::sendTextWithTags(
 
 	const auto hasText = !message.textWithTags.text.trimmed().isEmpty();
 	const auto deferCommentLocalMessageId = hasText
-		&& GetEnhancedBool("send_comment_after_forwarding")
+		&& EnhancedSettings::Get(EnhancedSettings::Option::SendCommentAfterForwarding)
 		&& _composeControls->readyToForward();
 	const auto nextLocalMessageId = deferCommentLocalMessageId
 		? std::optional<MsgId>()

@@ -125,11 +125,11 @@ TopBarWidget::TopBarWidget(
 , _controller(controller)
 , _primaryWindow(controller->isPrimary())
 , _clear(this, tr::lng_selected_clear(), st::topBarClearButton)
-, _forward(this, GetEnhancedBool("show_emoji_button_as_text") ? tr::lng_selected_forward() : tr::lng_selected_forward_emoji(), st::defaultActiveButton)
+, _forward(this, EnhancedSettings::Get(EnhancedSettings::Option::ShowEmojiButtonAsText) ? tr::lng_selected_forward() : tr::lng_selected_forward_emoji(), st::defaultActiveButton)
 , _sendNow(this, tr::lng_selected_send_now(), st::defaultActiveButton)
-, _delete(this, GetEnhancedBool("show_emoji_button_as_text") ? tr::lng_selected_delete() : tr::lng_selected_delete_emoji(), st::defaultActiveButton)
-, _forwardNoQuote(this, GetEnhancedBool("show_emoji_button_as_text") ? tr::lng_selected_forward_no_quote() : tr::lng_selected_forward_no_quote_emoji(), st::defaultActiveButton)
-, _savedMessages(this, GetEnhancedBool("show_emoji_button_as_text") ? tr::lng_forward_to_saved_message_text() : tr::lng_forward_to_saved_message_emoji(), st::defaultActiveButton)
+, _delete(this, EnhancedSettings::Get(EnhancedSettings::Option::ShowEmojiButtonAsText) ? tr::lng_selected_delete() : tr::lng_selected_delete_emoji(), st::defaultActiveButton)
+, _forwardNoQuote(this, EnhancedSettings::Get(EnhancedSettings::Option::ShowEmojiButtonAsText) ? tr::lng_selected_forward_no_quote() : tr::lng_selected_forward_no_quote_emoji(), st::defaultActiveButton)
+, _savedMessages(this, EnhancedSettings::Get(EnhancedSettings::Option::ShowEmojiButtonAsText) ? tr::lng_forward_to_saved_message_text() : tr::lng_forward_to_saved_message_emoji(), st::defaultActiveButton)
 , _back(this, st::historyTopBarBack)
 , _cancelChoose(this, st::topBarCloseChoose)
 , _call(this, st::topBarCall)
@@ -884,7 +884,7 @@ void TopBarWidget::infoClicked() {
 
 void TopBarWidget::backClicked() {
 	if (_activeChat.key.folder()) {
-		if (GetEnhancedBool("hide_all_chats")) {
+		if (EnhancedSettings::Get(EnhancedSettings::Option::HideAllChats)) {
 			const auto filters = &_controller->session().data().chatsFilters();
 			const auto lookup_id = filters->lookupId(_controller->session().premium() ? 0 : 1);
 			_controller->setActiveChatsFilter(lookup_id);
@@ -2045,7 +2045,7 @@ void TopBarWidget::updateOnlineDisplay() {
 		text = tr::lng_chat_status_direct(tr::now);
 	} else if (const auto channel = peer->asChannel()) {
 		const auto count = channel->membersCount();
-		const auto hideOnlineCount = GetEnhancedBool("hide_counter");
+		const auto hideOnlineCount = EnhancedSettings::Get(EnhancedSettings::Option::HideCounter);
 		const auto countLocally = channel->isMegagroup()
 			&& channel->canViewMembers()
 			&& (count > 0)
@@ -2185,7 +2185,7 @@ void TopBarWidget::updateOnlineDisplayTimer() {
 		}
 	} else if (const auto channel = peer->asMegagroup()) {
 		const auto count = channel->membersCount();
-		const auto hideOnlineCount = GetEnhancedBool("hide_counter");
+		const auto hideOnlineCount = EnhancedSettings::Get(EnhancedSettings::Option::HideCounter);
 		const auto countLocally = channel->canViewMembers()
 			&& (count > 0)
 			&& (count <= channel->session().serverConfig().chatSizeMax);

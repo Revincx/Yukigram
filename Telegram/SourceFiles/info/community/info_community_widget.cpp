@@ -73,7 +73,7 @@ InnerWidget::InnerWidget(
 , _controller(controller)
 , _peer(peer) {
 	if (const auto community = peer->asChannel()) {
-		if (GetEnhancedBool("show_peer_id")) {
+		if (EnhancedSettings::Get(EnhancedSettings::Option::ShowPeerId)) {
 			const auto communityId = QString::number(
 				peerToChannel(community->id).bare);
 			Ui::AddSkip(this);

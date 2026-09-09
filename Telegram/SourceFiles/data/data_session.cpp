@@ -420,7 +420,7 @@ Session::Session(not_null<Main::Session*> session)
 			}
 		}, _lifetime);
 
-		if (!GetEnhancedBool("hide_stories")) {
+		if (!EnhancedSettings::Get(EnhancedSettings::Option::HideStories)) {
 			_stories->loadMore(Data::StorySourcesList::NotHidden);
 		}
 	});

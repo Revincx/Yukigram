@@ -312,7 +312,7 @@ void HistoryMessageForwarded::create(
 				copy,
 				st::fwdTextUserpicPadding));
 	}
-	if (!originalPostAuthor.isEmpty() && !GetEnhancedBool("screenshot_mode")) {
+	if (!originalPostAuthor.isEmpty() && !EnhancedSettings::Get(EnhancedSettings::Option::ScreenshotMode)) {
 		phrase.append(
 			tr::lng_forwarded_signed(
 				tr::now,

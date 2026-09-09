@@ -521,7 +521,7 @@ void TopBar::updateControlsVisibility(anim::type animated) {
 }
 
 void TopBar::setStories(rpl::producer<Dialogs::Stories::Content> content) {
-	if (GetEnhancedBool("hide_stories")) {
+	if (EnhancedSettings::Get(EnhancedSettings::Option::HideStories)) {
 		return;
 	}
 	_storiesLifetime.destroy();

@@ -447,7 +447,8 @@ HistoryInner::HistoryInner(
 		}
 	}, lifetime());
 	if (_peer->isChat() || _peer->isMegagroup()) {
-		EnhancedSettings::ShowGroupSenderOnlineStatusValue(
+		EnhancedSettings::Watch(
+			EnhancedSettings::Option::ShowGroupSenderOnlineStatus
 		) | rpl::skip(
 			1
 		) | rpl::on_next([=] {
@@ -1908,8 +1909,8 @@ HistoryInner::VideoUserpic *HistoryInner::validateVideoUserpic(
 	if (!peer->isPremium()
 		|| peer->userpicPhotoUnknown()
 		|| !peer->userpicHasVideo()
-		|| GetEnhancedBool("disable_premium_animation")
-		|| GetEnhancedBool("screenshot_mode")) {
+		|| EnhancedSettings::Get(EnhancedSettings::Option::DisablePremiumAnimation)
+		|| EnhancedSettings::Get(EnhancedSettings::Option::ScreenshotMode)) {
 		_videoUserpics.remove(peer);
 		return nullptr;
 	}
@@ -1953,7 +1954,7 @@ float64 HistoryInner::senderOnlineProgress(not_null<PeerData*> peer) {
 	if (!user) {
 		return 0.;
 	}
-	const auto enabled = EnhancedSettings::ShowGroupSenderOnlineStatus();
+	const auto enabled = EnhancedSettings::Get(EnhancedSettings::Option::ShowGroupSenderOnlineStatus);
 	const auto i = _senderOnline.find(user);
 	if (!enabled && i == end(_senderOnline)) {
 		return 0.;
@@ -1975,7 +1976,7 @@ float64 HistoryInner::senderOnlineProgress(not_null<PeerData*> peer) {
 }
 
 void HistoryInner::updateSenderOnline(not_null<UserData*> user) {
-	const auto shown = EnhancedSettings::ShowGroupSenderOnlineStatus()
+	const auto shown = EnhancedSettings::Get(EnhancedSettings::Option::ShowGroupSenderOnlineStatus)
 		&& Data::IsUserOnline(user);
 	if (shown) {
 		user->owner().watchForOffline(user);
@@ -2017,7 +2018,7 @@ void HistoryInner::updateSenderOnlineSetting() {
 	for (const auto &user : users) {
 		updateSenderOnline(user);
 	}
-	if (!EnhancedSettings::ShowGroupSenderOnlineStatus()) {
+	if (!EnhancedSettings::Get(EnhancedSettings::Option::ShowGroupSenderOnlineStatus)) {
 		return;
 	}
 	const auto visibleTop = _visibleAreaTop;
@@ -3580,7 +3581,7 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 					selectedItemsForExport(),
 					this);
 			}
-			if (HasExtraContextMenuOption(ExtraContextMenuOption::HideMessage)) {
+			if (EnhancedSettings::HasExtraContextMenuOption(EnhancedSettings::ExtraContextMenuOption::HideMessage)) {
 				const auto ids = getSelectedItems();
 				if (!ids.empty()) {
 					_menu->addAction(tr::lng_context_hide_message(tr::now), [=] {
@@ -3598,8 +3599,8 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 			const auto itemId = item->fullId();
 			const auto blockSender = item->history()->peer->isRepliesChat();
 			if (isUponSelected != -2) {
-				const auto moreForward = HasExtraContextMenuOption(
-					ExtraContextMenuOption::MoreForward);
+				const auto moreForward = EnhancedSettings::HasExtraContextMenuOption(
+					EnhancedSettings::ExtraContextMenuOption::MoreForward);
 				auto fwdSubmenu = moreForward
 					? std::make_unique<Ui::PopupMenu>(this, st::popupMenuWithIcons)
 					: nullptr;
@@ -3622,7 +3623,7 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 					}
 				}
 				if ((item->history()->peer->isMegagroup() || item->history()->peer->isChat() || item->history()->peer->isUser())) {
-					if (HasExtraContextMenuOption(ExtraContextMenuOption::Repeater)) {
+					if (EnhancedSettings::HasExtraContextMenuOption(EnhancedSettings::ExtraContextMenuOption::Repeater)) {
 						if (item->allowsForward()) {
 							repeatSubmenu->addAction(tr::lng_context_repeat_msg(tr::now), [=] {
 								if (item->id <= 0) return;
@@ -3654,7 +3655,7 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 								if (item->history()->peer->isUser() || item->history()->peer->isChat()) {
 									message.action.options.sendAs = nullptr;
 								}
-								if (GetEnhancedBool("repeater_reply_to_orig_msg")) {
+								if (EnhancedSettings::Get(EnhancedSettings::Option::RepeaterReplyToOriginal)) {
 									message.action.replyTo = FullReplyTo{
 																.messageId = item->fullId(),
 															};
@@ -3674,7 +3675,7 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 									if (item->history()->peer->isUser() || item->history()->peer->isChat()) {
 										action.options.sendAs = nullptr;
 									}
-									if (GetEnhancedBool("repeater_reply_to_orig_msg")) {
+									if (EnhancedSettings::Get(EnhancedSettings::Option::RepeaterReplyToOriginal)) {
 										action.replyTo = FullReplyTo{
 															.messageId = item->fullId(),
 														};
@@ -3728,7 +3729,7 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 				if (fwdSubmenu && !fwdSubmenu->empty()) {
 					_menu->addAction(tr::lng_context_forward_msg(tr::now), std::move(fwdSubmenu), &st::menuIconForward);
 				}
-				if (HasExtraContextMenuOption(ExtraContextMenuOption::Repeater) && !repeatSubmenu->empty()) {
+				if (EnhancedSettings::HasExtraContextMenuOption(EnhancedSettings::ExtraContextMenuOption::Repeater) && !repeatSubmenu->empty()) {
 					_menu->addAction(tr::lng_context_repeater(tr::now), std::move(repeatSubmenu), &st::menuIconDiscussion);
 				}
 				if (HistoryView::CanAddOfferToMessage(item)) {
@@ -3736,7 +3737,7 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 						Api::AddOfferToMessage(_controller->uiShow(), itemId);
 					}, &st::menuIconTagSell);
 				}
-				if (HasExtraContextMenuOption(ExtraContextMenuOption::HideMessage)
+				if (EnhancedSettings::HasExtraContextMenuOption(EnhancedSettings::ExtraContextMenuOption::HideMessage)
 					&& item->isHistoryEntry()
 					&& !item->isEmpty()) {
 					HistoryView::AddHideMessageAction(_menu, item);
@@ -3780,7 +3781,7 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 				}, &st::menuIconBlock);
 			}
 		}
-		if (item && item->id > 0 && isUponSelected != 2 && isUponSelected != -2 && HasExtraContextMenuOption(ExtraContextMenuOption::ViewAsJson)) {
+		if (item && item->id > 0 && isUponSelected != 2 && isUponSelected != -2 && EnhancedSettings::HasExtraContextMenuOption(EnhancedSettings::ExtraContextMenuOption::ViewAsJson)) {
 			_menu->addAction(tr::lng_context_view_as_json(tr::now), [=] {
 				HistoryView::ViewAsJSON(controller, itemId);
 			}, &st::menuIconJson);
@@ -4049,7 +4050,7 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 					selectedItemsForExport(),
 					this);
 			}
-			if (HasExtraContextMenuOption(ExtraContextMenuOption::HideMessage)) {
+			if (EnhancedSettings::HasExtraContextMenuOption(EnhancedSettings::ExtraContextMenuOption::HideMessage)) {
 				const auto ids = getSelectedItems();
 				if (!ids.empty()) {
 					_menu->addAction(tr::lng_context_hide_message(tr::now), [=] {
@@ -4068,8 +4069,8 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 				|| item->isRegular()
 				|| item->isEphemeral())) {
 			if (isUponSelected != -2) {
-				const auto moreForward = HasExtraContextMenuOption(
-					ExtraContextMenuOption::MoreForward);
+				const auto moreForward = EnhancedSettings::HasExtraContextMenuOption(
+					EnhancedSettings::ExtraContextMenuOption::MoreForward);
 				auto fwdSubmenu = moreForward
 					? std::make_unique<Ui::PopupMenu>(this, st::popupMenuWithIcons)
 					: nullptr;
@@ -4092,7 +4093,7 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 					}
 				}
 				if ((item->history()->peer->isMegagroup() || item->history()->peer->isChat() || item->history()->peer->isUser())) {
-					if (HasExtraContextMenuOption(ExtraContextMenuOption::Repeater)) {
+					if (EnhancedSettings::HasExtraContextMenuOption(EnhancedSettings::ExtraContextMenuOption::Repeater)) {
 						if (canForward) {
 							repeatSubmenu->addAction(tr::lng_context_repeat_msg(tr::now), [=] {
 								if (item->id <= 0) return;
@@ -4123,7 +4124,7 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 								if (item->history()->peer->isUser() || item->history()->peer->isChat()) {
 									message.action.options.sendAs = nullptr;
 								}
-								if (GetEnhancedBool("repeater_reply_to_orig_msg")) {
+								if (EnhancedSettings::Get(EnhancedSettings::Option::RepeaterReplyToOriginal)) {
 									message.action.replyTo = FullReplyTo{
 																.messageId = item->fullId(),
 															};
@@ -4192,7 +4193,7 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 				if (fwdSubmenu && !fwdSubmenu->empty()) {
 					_menu->addAction(tr::lng_context_forward_msg(tr::now), std::move(fwdSubmenu), &st::menuIconForward);
 				}
-				if (HasExtraContextMenuOption(ExtraContextMenuOption::Repeater) && !repeatSubmenu->empty()) {
+				if (EnhancedSettings::HasExtraContextMenuOption(EnhancedSettings::ExtraContextMenuOption::Repeater) && !repeatSubmenu->empty()) {
 					_menu->addAction(tr::lng_context_repeater(tr::now), std::move(repeatSubmenu), &st::menuIconDiscussion);
 				}
 				if (HistoryView::CanAddOfferToMessage(item)) {
@@ -4200,7 +4201,7 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 						Api::AddOfferToMessage(_controller->uiShow(), itemId);
 					}, &st::menuIconTagSell);
 				}
-				if (HasExtraContextMenuOption(ExtraContextMenuOption::HideMessage)
+				if (EnhancedSettings::HasExtraContextMenuOption(EnhancedSettings::ExtraContextMenuOption::HideMessage)
 					&& item->isHistoryEntry()
 					&& !item->isEmpty()) {
 					HistoryView::AddHideMessageAction(_menu, item);
@@ -4248,7 +4249,7 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 		} else if (Element::Moused()) {
 			addSelectMessageAction(Element::Moused()->data());
 		}
-		if (item && item->id > 0 && isUponSelected != 2 && isUponSelected != -2 && HasExtraContextMenuOption(ExtraContextMenuOption::ViewAsJson)) {
+		if (item && item->id > 0 && isUponSelected != 2 && isUponSelected != -2 && EnhancedSettings::HasExtraContextMenuOption(EnhancedSettings::ExtraContextMenuOption::ViewAsJson)) {
 			_menu->addAction(tr::lng_context_view_as_json(tr::now), [=] {
 				HistoryView::ViewAsJSON(controller, itemId);
 			}, &st::menuIconJson);

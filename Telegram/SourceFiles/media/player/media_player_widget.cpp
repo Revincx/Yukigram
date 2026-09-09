@@ -70,7 +70,7 @@ namespace {
 
 [[nodiscard]] QString DocumentMetadataFlags(
 		not_null<DocumentData*> document) {
-	if (!GetEnhancedBool("show_media_metadata")) {
+	if (!EnhancedSettings::Get(EnhancedSettings::Option::ShowMediaMetadata)) {
 		return QString();
 	}
 	auto flags = QStringList();
@@ -831,7 +831,7 @@ void Widget::handleSongChange() {
 		textWithEntities = Ui::Text::FormatSongNameFor(document)
 			.textWithEntities(true);
 	}
-	if (GetEnhancedBool("show_media_metadata")) {
+	if (EnhancedSettings::Get(EnhancedSettings::Option::ShowMediaMetadata)) {
 		const auto metadata = DocumentMetadataText(document);
 		if (!metadata.isEmpty()) {
 			textWithEntities.append(u" · "_q).append(metadata);

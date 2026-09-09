@@ -46,7 +46,7 @@ public:
 		return true;
 	}
 	bool isDisplayed() const override {
-		return !_empty && (_toggled == GetEnhancedBool("show_similar_on_joined"));
+		return !_empty && (_toggled == EnhancedSettings::Get(EnhancedSettings::Option::ShowSimilarOnJoined));
 	}
 
 	void unloadHeavyPart() override;

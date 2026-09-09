@@ -15,8 +15,16 @@
 
 namespace {
 
+void SetRules(std::vector<Core::LinkPreviewRule> rules) {
+	auto value = Core::LinkPreviewRules();
+	value.setRules(std::move(rules));
+	EnhancedSettings::Set(
+		EnhancedSettings::Option::LinkPreviewRules,
+		std::move(value));
+}
+
 void EditRuleBox(not_null<Ui::GenericBox*> box, int index) {
-	const auto &rules = EnhancedSettings::PreviewRules().rules();
+	const auto &rules = EnhancedSettings::Get(EnhancedSettings::Option::LinkPreviewRules).rules();
 	const auto editing = (index >= 0 && index < int(rules.size()));
 	const auto initial = editing ? rules[index] : Core::LinkPreviewRule();
 	box->setTitle(editing
@@ -51,7 +59,7 @@ void EditRuleBox(not_null<Ui::GenericBox*> box, int index) {
 			(validPattern ? domain : pattern)->setFocusFast();
 			return;
 		}
-		auto updated = EnhancedSettings::PreviewRules().rules();
+		auto updated = EnhancedSettings::Get(EnhancedSettings::Option::LinkPreviewRules).rules();
 		if (editing) {
 			if (index >= int(updated.size()) || updated[index] != initial) {
 				box->closeBox();
@@ -61,8 +69,7 @@ void EditRuleBox(not_null<Ui::GenericBox*> box, int index) {
 		} else {
 			updated.push_back({ expression, target });
 		}
-		EnhancedSettings::SetPreviewRules(std::move(updated));
-		EnhancedSettings::Write();
+		SetRules(std::move(updated));
 		box->closeBox();
 	};
 	pattern->changes() | rpl::on_next([=] {
@@ -81,11 +88,10 @@ void EditRuleBox(not_null<Ui::GenericBox*> box, int index) {
 	});
 	if (editing) {
 		box->addLeftButton(tr::lng_box_delete(), [=] {
-			auto updated = EnhancedSettings::PreviewRules().rules();
+			auto updated = EnhancedSettings::Get(EnhancedSettings::Option::LinkPreviewRules).rules();
 			if (index < int(updated.size()) && updated[index] == initial) {
 				updated.erase(updated.begin() + index);
-				EnhancedSettings::SetPreviewRules(std::move(updated));
-				EnhancedSettings::Write();
+				SetRules(std::move(updated));
 			}
 			box->closeBox();
 		});
@@ -144,7 +150,7 @@ void FillRules(
 		not_null<Ui::GenericBox*> box,
 		not_null<Ui::VerticalLayout*> list) {
 	list->clear();
-	const auto &rules = EnhancedSettings::PreviewRules().rules();
+	const auto &rules = EnhancedSettings::Get(EnhancedSettings::Option::LinkPreviewRules).rules();
 	if (rules.empty()) {
 		list->add(
 			object_ptr<Ui::FlatLabel>(
@@ -179,7 +185,7 @@ void LinkPreviewRulesBox(not_null<Ui::GenericBox*> box) {
 		object_ptr<Ui::VerticalLayout>(box),
 		style::margins());
 	FillRules(box, list);
-	EnhancedSettings::PreviewRulesChanges() | rpl::on_next([=] {
+	EnhancedSettings::Changes(EnhancedSettings::Option::LinkPreviewRules) | rpl::on_next([=] {
 		FillRules(box, list);
 	}, box->lifetime());
 	box->addLeftButton(tr::lng_link_preview_rule_add(), [=] {

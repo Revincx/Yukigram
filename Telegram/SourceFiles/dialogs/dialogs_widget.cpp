@@ -1030,7 +1030,7 @@ void Widget::chosenRow(const ChosenRow &row) {
 		if (!history
 			|| !row.userpicClick
 			|| (row.message.fullId.msg != ShowAtUnreadMsgId)
-			|| GetEnhancedBool("community_chat_click")) {
+			|| EnhancedSettings::Get(EnhancedSettings::Option::CommunityChatClick)) {
 			return nullptr;
 		}
 		const auto communityId = Data::PeerLinkedCommunityId(history->peer);
@@ -1176,7 +1176,7 @@ void Widget::chosenRow(const ChosenRow &row) {
 			hideChildList();
 		}
 	} else if (const auto folder = row.key.folder()) {
-		if (!GetEnhancedBool("hide_stories") && row.userpicClick) {
+		if (!EnhancedSettings::Get(EnhancedSettings::Option::HideStories) && row.userpicClick) {
 			const auto list = Data::StorySourcesList::Hidden;
 			const auto &sources = session().data().stories().sources(list);
 			if (!sources.empty()) {
@@ -1763,7 +1763,7 @@ void Widget::setupMainMenuToggle() {
 }
 
 void Widget::setupStories() {
-	if (GetEnhancedBool("hide_stories")) {
+	if (EnhancedSettings::Get(EnhancedSettings::Option::HideStories)) {
 		return;
 	}
 	_stories->verticalScrollEvents(
@@ -1889,7 +1889,7 @@ void Widget::setupStories() {
 }
 
 void Widget::storiesToggleExplicitExpand(bool expand) {
-	if (GetEnhancedBool("hide_stories")) {
+	if (EnhancedSettings::Get(EnhancedSettings::Option::HideStories)) {
 		return;
 	}
 	if (_storiesExplicitExpand == expand) {
@@ -2367,7 +2367,7 @@ void Widget::changeOpenedFolder(Data::Folder *folder, anim::type animated) {
 		controller()->closeForum();
 		_openedFolder = folder;
 		_inner->changeOpenedFolder(folder);
-		if (!GetEnhancedBool("hide_stories") && _stories) {
+		if (!EnhancedSettings::Get(EnhancedSettings::Option::HideStories) && _stories) {
 			_stories->setShowTitle(folder != nullptr);
 			storiesExplicitCollapse();
 		}
@@ -2824,7 +2824,7 @@ void Widget::stopWidthAnimation() {
 }
 
 void Widget::updateStoriesVisibility() {
-	if (GetEnhancedBool("hide_stories")) {
+	if (EnhancedSettings::Get(EnhancedSettings::Option::HideStories)) {
 		_stories = nullptr;
 	}
 	updateLockUnlockVisibility(anim::type::normal);
@@ -3355,7 +3355,7 @@ bool Widget::search(bool inCache, SearchRequestDelay delay) {
 }
 
 bool Widget::peerSearchRequired() const {
-	return !GetEnhancedBool("disable_global_search") && _searchState.filterChatsList() && !_openedForum;
+	return !EnhancedSettings::Get(EnhancedSettings::Option::DisableGlobalSearch) && _searchState.filterChatsList() && !_openedForum;
 }
 
 bool Widget::searchForTopicsRequired(const QString &query) const {

@@ -2210,7 +2210,7 @@ ShareBox::SubmitCallback ShareBox::DefaultForwardCallback(
 		}
 		const auto hasComment = !comment.text.isEmpty();
 		const auto sendCommentAfter = hasComment
-			&& GetEnhancedBool("send_comment_after_forwarding");
+			&& EnhancedSettings::Get(EnhancedSettings::Option::SendCommentAfterForwarding);
 		if (addSpoiler
 			|| groupingOptions != Data::GroupingOptions::GroupAsIs) {
 			const auto donePhraseArgs = CreateForwardedMessagePhraseArgs(

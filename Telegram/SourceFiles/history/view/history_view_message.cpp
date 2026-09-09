@@ -2233,8 +2233,8 @@ void Message::draw(Painter &p, const PaintContext &context) const {
 		}
 	}
 
-	if (GetEnhancedBool("screenshot_mode") != _previousMode) {
-		_previousMode = GetEnhancedBool("screenshot_mode"); // Update the previous mode
+	if (EnhancedSettings::Get(EnhancedSettings::Option::ScreenshotMode) != _previousMode) {
+		_previousMode = EnhancedSettings::Get(EnhancedSettings::Option::ScreenshotMode); // Update the previous mode
 	}
 
 	if (hasGesture) {
@@ -5502,7 +5502,7 @@ void Message::validateFromNameText(PeerData *from) const {
 		return;
 	}
 	const auto version = from->nameVersion();
-	if (_fromNameVersion < version || GetEnhancedBool("screenshot_mode") != _previousMode) {
+	if (_fromNameVersion < version || EnhancedSettings::Get(EnhancedSettings::Option::ScreenshotMode) != _previousMode) {
 		_fromNameVersion = version;
 		_fromName.setText(
 			st::msgNameStyle,
@@ -5527,7 +5527,7 @@ void Message::validateFromNameText(PeerData *from) const {
 void Message::validateForwardedNameText(HistoryItem *item) const {
 	const auto forwarded = item->Get<HistoryMessageForwarded>();
 	const auto via = item->Get<HistoryMessageVia>();
-	if (forwarded && GetEnhancedBool("screenshot_mode") != _previousMode) {
+	if (forwarded && EnhancedSettings::Get(EnhancedSettings::Option::ScreenshotMode) != _previousMode) {
 		forwarded->create(via, item);
 	}
 }
@@ -6003,7 +6003,7 @@ bool Message::displayRightActionComments() const {
 	return !isPinnedContext()
 		&& (context() != Context::SavedSublist)
 		&& data()->repliesAreComments()
-		&& ((media() && media()->isDisplayed() && !hasBubble()) || GetEnhancedBool("more_right_action_comments"));
+		&& ((media() && media()->isDisplayed() && !hasBubble()) || EnhancedSettings::Get(EnhancedSettings::Option::MoreRightActionComments));
 }
 
 std::optional<QSize> Message::rightActionSize() const {

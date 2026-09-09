@@ -487,7 +487,7 @@ void TranslateBox(
 		rpl::event_stream<> refreshRequests;
 	};
 	const auto state = box->lifetime().make_state<State>(&peer->session());
-	state->provider = GetEnhancedBool("use_gt_api")
+	state->provider = EnhancedSettings::Get(EnhancedSettings::Option::UseGtApi)
 		? TranslateBoxProvider::Google
 		: TranslateBoxProvider::Default;
 	if (IsServerMsgId(msgId)
@@ -530,7 +530,7 @@ void TranslateBox(
 				state->to.current(),
 				crl::guard(box, [=](LanguageId id) { state->to = id; })));
 		},
-		.chooseProvider = GetEnhancedBool("use_gt_api")
+		.chooseProvider = EnhancedSettings::Get(EnhancedSettings::Option::UseGtApi)
 			? Fn<void()>([=] {
 				state->provider = (state->provider.current()
 					== TranslateBoxProvider::Google)

@@ -235,7 +235,7 @@ WebpageProcessor::WebpageProcessor(
 		checkPreview();
 	}, _lifetime);
 
-	EnhancedSettings::PreviewRulesChanges() | rpl::on_next([=] {
+	EnhancedSettings::Changes(EnhancedSettings::Option::LinkPreviewRules) | rpl::on_next([=] {
 		if (!_draft.manual) {
 			_links.clear();
 			checkPreview();
@@ -296,7 +296,7 @@ const std::vector<MessageLinkRange> &WebpageProcessor::links() const {
 QString WebpageProcessor::link() const {
 	if (!_draft.manual) {
 		for (const auto &source : _links) {
-			if (EnhancedSettings::PreviewRules().replaceDomain(source)
+			if (EnhancedSettings::Get(EnhancedSettings::Option::LinkPreviewRules).replaceDomain(source)
 					== _link) {
 				return source;
 			}
@@ -459,7 +459,7 @@ void WebpageProcessor::checkPreview() {
 	auto page = (WebPageData*)nullptr;
 	auto chosen = QString();
 	for (const auto &source : _links) {
-		const auto link = EnhancedSettings::PreviewRules().replaceDomain(source);
+		const auto link = EnhancedSettings::Get(EnhancedSettings::Option::LinkPreviewRules).replaceDomain(source);
 		const auto value = _resolver->lookup(link);
 		if (!value) {
 			chosen = link;

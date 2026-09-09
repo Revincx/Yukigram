@@ -201,10 +201,12 @@ bool Sticker::readyToDrawAnimationFrame() {
 
 QSize Sticker::Size() {
 	const auto side = std::min(st::maxStickerSize, kMaxSizeFixed);
-	if (const auto height = EnhancedSettings::StickerHeight()) [[unlikely]] {
+	if (const auto height = EnhancedSettings::Get(EnhancedSettings::Option::StickerHeight)) [[unlikely]] {
+		const auto constraint = EnhancedSettings::IntegerConstraintFor(
+			EnhancedSettings::Option::StickerHeight);
 		const auto scaled = std::clamp(
 			style::ConvertScale(height),
-			style::ConvertScale(EnhancedSettings::kStickerHeightMin),
+			style::ConvertScale(constraint.minimum),
 			side);
 		return { scaled, scaled };
 	}

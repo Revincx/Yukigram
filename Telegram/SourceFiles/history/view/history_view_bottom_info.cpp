@@ -73,7 +73,7 @@ namespace {
 	const auto today = QDateTime::currentDateTime().date();
 	const auto time = QLocale().toString(
 		edited.time(),
-		GetEnhancedBool("show_seconds")
+		EnhancedSettings::Get(EnhancedSettings::Option::ShowSeconds)
 			? QLocale::system().timeFormat(QLocale::LongFormat).remove("t")
 			: QLocale::system().timeFormat(QLocale::ShortFormat));
 	if (sent.date() == today && edited.date() == today) {
@@ -509,8 +509,8 @@ void BottomInfo::layoutDateText() {
 		: edited + ((_data.flags & Data::Flag::ForwardedDate)
 		? Ui::FormatDateTimeSavedFrom(
 			_data.date,
-			GetEnhancedBool("show_seconds"))
-		: QLocale().toString(_data.date.time(), GetEnhancedBool("show_seconds") 
+			EnhancedSettings::Get(EnhancedSettings::Option::ShowSeconds))
+		: QLocale().toString(_data.date.time(), EnhancedSettings::Get(EnhancedSettings::Option::ShowSeconds)
 			? QLocale::system().timeFormat(QLocale::LongFormat).remove("t") 
 			: QLocale::system().timeFormat(QLocale::ShortFormat))) + _data.msgId;
 	const auto afterAuthor = prefix + date;
@@ -755,7 +755,7 @@ BottomInfo::Data BottomInfoDataFromMessage(not_null<Message*> message) {
 			result.flags |= Flag::Silent;
 		}
 	}
-	if (GetEnhancedBool("show_messages_id")
+	if (EnhancedSettings::Get(EnhancedSettings::Option::ShowMessagesId)
 		&& (message->context() == Context::History
 			|| message->context() == Context::Replies
 			|| message->context() == Context::Pinned

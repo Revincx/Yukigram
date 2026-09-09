@@ -399,7 +399,7 @@ TextForMimeData HistorySelectedItemPlainWrappedText(
 	const auto time = u"[%1] "_q.arg(
 		QLocale().toString(
 			ItemDateTime(item),
-			GetEnhancedBool("show_seconds")
+			EnhancedSettings::Get(EnhancedSettings::Option::ShowSeconds)
 				? QLocale::system().timeFormat(QLocale::LongFormat).remove("t")
 				: QLocale::system().timeFormat(QLocale::ShortFormat)));
 	const auto author = item->author()->name();
@@ -556,7 +556,7 @@ TextForMimeData HistorySelectedItemWrappedText(
 	const auto time = u"[%1] "_q.arg(
 		QLocale().toString(
 			ItemDateTime(item),
-			GetEnhancedBool("show_seconds")
+			EnhancedSettings::Get(EnhancedSettings::Option::ShowSeconds)
 				? QLocale::system().timeFormat(QLocale::LongFormat).remove("t")
 				: QLocale::system().timeFormat(QLocale::ShortFormat)));
 	const auto author = item->author()->name();

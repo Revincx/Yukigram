@@ -650,7 +650,7 @@ bool AddForwardMessageAction(
 		}
 	}
 	const auto itemId = item->fullId();
-	if (!HasExtraContextMenuOption(ExtraContextMenuOption::MoreForward)) {
+	if (!EnhancedSettings::HasExtraContextMenuOption(EnhancedSettings::ExtraContextMenuOption::MoreForward)) {
 		menu->addAction(tr::lng_context_forward_msg(tr::now), [=] {
 			if (const auto item = owner->message(itemId)) {
 				Window::ShowForwardMessagesBox(
@@ -759,7 +759,7 @@ void AddRepeaterAction(
 	const auto context = list->elementContext();
 	auto repeatSubmenu = std::make_unique<Ui::PopupMenu>(list, st::popupMenuWithIcons);
 	if ((item->history()->peer->isMegagroup() || item->history()->peer->isChat() || item->history()->peer->isUser())) {
-		if (HasExtraContextMenuOption(ExtraContextMenuOption::Repeater)
+		if (EnhancedSettings::HasExtraContextMenuOption(EnhancedSettings::ExtraContextMenuOption::Repeater)
 			&& (context == Context::History
 				|| context == Context::Monoforum
 				|| (context == Context::Replies && item->topic()))
@@ -804,7 +804,7 @@ void AddRepeaterAction(
 													.topicRootId = item->topicRootId(),
 												};
 					}
-					if (GetEnhancedBool("repeater_reply_to_orig_msg")) {
+					if (EnhancedSettings::Get(EnhancedSettings::Option::RepeaterReplyToOriginal)) {
 						message.action.replyTo.messageId = item->fullId();
 					}
 					api->sendMessage(std::move(message));
@@ -826,7 +826,7 @@ void AddRepeaterAction(
 												.topicRootId = item->topicRootId(),
 											};
 						}
-						if (GetEnhancedBool("repeater_reply_to_orig_msg")) {
+						if (EnhancedSettings::Get(EnhancedSettings::Option::RepeaterReplyToOriginal)) {
 							action.replyTo.messageId = item->fullId();
 						}
 
@@ -857,7 +857,7 @@ void AddRepeaterAction(
 					}, &st::menuIconDiscussion);
 				}
 			}
-			if (HasExtraContextMenuOption(ExtraContextMenuOption::Repeater) && !repeatSubmenu->empty()) {
+			if (EnhancedSettings::HasExtraContextMenuOption(EnhancedSettings::ExtraContextMenuOption::Repeater) && !repeatSubmenu->empty()) {
 				menu->addAction(tr::lng_context_repeater(tr::now), std::move(repeatSubmenu), &st::menuIconDiscussion);
 			}
 		}
@@ -1070,7 +1070,7 @@ void AddViewJSONAction(
 	not_null<Ui::PopupMenu*> menu,
 	const ContextMenuRequest& request,
 	not_null<ListWidget*> list) {
-	if(!HasExtraContextMenuOption(ExtraContextMenuOption::ViewAsJson))
+	if(!EnhancedSettings::HasExtraContextMenuOption(EnhancedSettings::ExtraContextMenuOption::ViewAsJson))
 	{
 		return;
 	}
@@ -1669,7 +1669,7 @@ void AddHideMessageAction(
 		const ContextMenuRequest &request,
 		not_null<ListWidget*> list) {
 	const auto context = list->elementContext();
-	if (!HasExtraContextMenuOption(ExtraContextMenuOption::HideMessage)
+	if (!EnhancedSettings::HasExtraContextMenuOption(EnhancedSettings::ExtraContextMenuOption::HideMessage)
 		|| (context != Context::History 
 			&& context != Context::Replies
 			&& context != Context::Monoforum)

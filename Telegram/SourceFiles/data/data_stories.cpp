@@ -238,7 +238,7 @@ Main::Session &Stories::session() const {
 }
 
 void Stories::apply(const MTPDupdateStory &data) {
-	if (GetEnhancedBool("hide_stories")) {
+	if (EnhancedSettings::Get(EnhancedSettings::Option::HideStories)) {
 		return;
 	}
 	const auto peerId = peerFromMTP(data.vpeer());
@@ -290,7 +290,7 @@ void Stories::apply(const MTPDupdateStory &data) {
 }
 
 void Stories::apply(const MTPDupdateReadStories &data) {
-	if (GetEnhancedBool("hide_stories")) {
+	if (EnhancedSettings::Get(EnhancedSettings::Option::HideStories)) {
 		return;
 	}
 	bumpReadTill(peerFromMTP(data.vpeer()), data.vmax_id().v);
@@ -305,7 +305,7 @@ void Stories::apply(const MTPStoriesStealthMode &stealthMode) {
 }
 
 void Stories::apply(not_null<PeerData*> peer, const MTPPeerStories *data) {
-	if (GetEnhancedBool("hide_stories")) {
+	if (EnhancedSettings::Get(EnhancedSettings::Option::HideStories)) {
 		return;
 	}
 	if (!data) {
@@ -320,7 +320,7 @@ void Stories::apply(not_null<PeerData*> peer, const MTPPeerStories *data) {
 }
 
 Story *Stories::applySingle(PeerId peerId, const MTPstoryItem &story) {
-	if (GetEnhancedBool("hide_stories")) {
+	if (EnhancedSettings::Get(EnhancedSettings::Option::HideStories)) {
 		return nullptr;
 	}
 	const auto idDates = parseAndApply(
@@ -1792,7 +1792,7 @@ void Stories::albumIdsLoadMore(PeerId peerId, int albumId) {
 void Stories::albumIdsLoadMore(PeerId peerId, int albumId, bool reload) {
 	Expects(!reload || albumId > 0);
 
-    if (GetEnhancedBool("hide_stories")) {
+    if (EnhancedSettings::Get(EnhancedSettings::Option::HideStories)) {
 		return;
 	}
 

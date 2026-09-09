@@ -38,6 +38,7 @@ struct SettingsSection {
 struct SettingsControl {
 	Settings::Type sectionId;
 	QString controlId;
+	Handler valueHandler;
 };
 
 struct CodeBlock {

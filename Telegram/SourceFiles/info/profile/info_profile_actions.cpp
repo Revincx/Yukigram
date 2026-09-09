@@ -1876,7 +1876,7 @@ Section DetailsFiller::makeInfo() {
 	// Add Peer ID Info, port from AyuGram Desktop
 	// https://github.com/AyuGram/AyuGramDesktop/blob/dev/Telegram/SourceFiles/ayu/ui/utils/ayu_profile_values.cpp
 	// https://github.com/AyuGram/AyuGramDesktop/blob/dev/Telegram/SourceFiles/info/profile/info_profile_actions.cpp#L1826
-	if(GetEnhancedBool("show_peer_id")) {
+	if(EnhancedSettings::Get(EnhancedSettings::Option::ShowPeerId)) {
 		const auto idLabel = QString("ID");
 		auto idNum = QString::number(0);
 
@@ -2071,7 +2071,7 @@ Section DetailsFiller::makePersonalChannel(not_null<UserData*> user) {
 
 			const auto date = Ui::CreateChild<Ui::FlatLabel>(
 				line,
-				Ui::FormatDialogsDate(ItemDateTime(item), GetEnhancedBool("show_seconds")),
+				Ui::FormatDialogsDate(ItemDateTime(item), EnhancedSettings::Get(EnhancedSettings::Option::ShowSeconds)),
 				st::infoPersonalChannelDateLabel);
 
 			const auto name = Ui::CreateChild<Ui::FlatLabel>(

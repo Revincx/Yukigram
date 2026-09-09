@@ -57,7 +57,7 @@ FormatSongName FormatVoiceName(
 			const auto date = parsed.date();
 			const auto time = QLocale().toString(
 				parsed.time(),
-				GetEnhancedBool("show_seconds")
+				EnhancedSettings::Get(EnhancedSettings::Option::ShowSeconds)
 					? QLocale::system().timeFormat(QLocale::LongFormat).remove("t")
 					: QLocale::system().timeFormat(QLocale::ShortFormat));
 			const auto today = QDateTime::currentDateTime().date();

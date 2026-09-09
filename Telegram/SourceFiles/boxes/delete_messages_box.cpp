@@ -194,7 +194,7 @@ void DeleteMessagesBox::prepare() {
 				const auto revokeByDefault
 					= !settings.rememberedDeleteMessageOnlyForYou();
 				const auto hideRevoke = peer->isUser()
-					&& GetEnhancedBool("hide-delete-for-others-checkbox");
+					&& EnhancedSettings::Get(EnhancedSettings::Option::HideDeleteForOthersCheckbox);
 
 				if (!hideRevoke) {
 					_revoke.create(
@@ -539,7 +539,7 @@ void DeleteMessagesBox::deleteAndClear() {
 	const auto hiddenRevoke = [&] {
 		if (const auto peer = checkFromSinglePeer()) {
 			return peer->isUser()
-				&& GetEnhancedBool("hide-delete-for-others-checkbox")
+				&& EnhancedSettings::Get(EnhancedSettings::Option::HideDeleteForOthersCheckbox)
 				&& revokeText(peer).has_value();
 		}
 		return false;

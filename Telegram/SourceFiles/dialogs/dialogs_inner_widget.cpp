@@ -6377,7 +6377,7 @@ RowDescriptor InnerWidget::computeJump(
 			|| (skip == JumpSkip::NextOrOriginal);
 		const auto needSkip = [&] {
 			return (result.key.folder() != nullptr)
-				|| (GetEnhancedBool("skip_to_next")
+				|| (EnhancedSettings::Get(EnhancedSettings::Option::SkipToNext)
 					&& !result.key.entry()->chatListUnreadState().messages
 					&& !result.key.entry()->chatListUnreadState().marks)
 				|| (session().supportMode()

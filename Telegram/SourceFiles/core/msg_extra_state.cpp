@@ -376,7 +376,7 @@ bool shouldHideBlockedMessage(not_null<HistoryItem*> item) {
 		return false;
 	}
 	const auto from = item->from();
-	if (blockExist(from->id.value)) {
+	if (EnhancedSettings::BlocklistContains(from->id.value)) {
 		return true;
 	}
 	if (const auto user = from->asUser()) {

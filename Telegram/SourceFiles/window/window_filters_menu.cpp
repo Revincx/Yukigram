@@ -360,7 +360,7 @@ void FiltersMenu::refresh() {
 	const auto maxLimit = (reorderAll ? 1 : 0)
 		+ Data::PremiumLimits(&_session->session()).dialogFiltersCurrent();
 	const auto premiumFrom = (reorderAll ? 0 : 1) + maxLimit;
-	if (!reorderAll && !GetEnhancedBool("hide_all_chats")) {
+	if (!reorderAll && !EnhancedSettings::Get(EnhancedSettings::Option::HideAllChats)) {
 		_reorder->addPinnedInterval(0, 1);
 	}
 	_reorder->addPinnedInterval(
@@ -434,7 +434,7 @@ void FiltersMenu::refresh() {
 void FiltersMenu::setupList() {
 	_list = _container->add(object_ptr<TabListLayout>(_container));
 	_list->setAccessibleName(tr::lng_filters_title(tr::now));
-	if (!GetEnhancedBool("replace_edit_button")) {
+	if (!EnhancedSettings::Get(EnhancedSettings::Option::ReplaceEditButton)) {
 		_setup = prepareButton(
 				_container,
 				-1,
@@ -698,7 +698,7 @@ base::unique_qptr<Ui::SideBarButton> FiltersMenu::prepareButton(
 		} else if (id >= 0) {
 			_session->setActiveChatsFilter(id);
 		} else {
-			if (GetEnhancedBool("replace_edit_button")) {
+			if (EnhancedSettings::Get(EnhancedSettings::Option::ReplaceEditButton)) {
 				_session->showPeerHistory(_session->session().userPeerId());
 			} else {
 				openFiltersSettings();
@@ -739,7 +739,7 @@ base::unique_qptr<Ui::SideBarButton> FiltersMenu::prepareButton(
 	}
 
 	// -1 means the "Edit" button
-	if (id == -1 && GetEnhancedBool("replace_edit_button")) {
+	if (id == -1 && EnhancedSettings::Get(EnhancedSettings::Option::ReplaceEditButton)) {
 		raw->setAcceptDrops(true);
 		raw->events(
 		) | rpl::filter([=](not_null<QEvent*> e) {

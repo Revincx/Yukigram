@@ -1785,7 +1785,7 @@ int Element::richMessagePreviewBlocksLimit() const {
 	const auto peer = history()->peer;
 	return (peer->isBot() && data()->from() == peer)
 		? 0
-		: EnhancedSettings::RichMessagePreviewBlocksLimit();
+		: EnhancedSettings::Get(EnhancedSettings::Option::RichMessagePreviewBlocksLimit);
 }
 
 OnlyEmojiAndSpaces Element::isOnlyEmojiAndSpaces() const {

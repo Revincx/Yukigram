@@ -399,18 +399,18 @@ void SettingsBox(
 		tr::lng_settings_stereo_mode(),
 		st::groupCallSettingsButton
 	)->toggleOn(
-		rpl::single(GetEnhancedBool("show_scheduled_button"))
+		rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::StereoMode))
 	)->toggledChanges(
 	) | rpl::filter([=](bool toggled) {
-		return (toggled != GetEnhancedBool("show_scheduled_button"));
+		return toggled != EnhancedSettings::Get(
+			EnhancedSettings::Option::StereoMode);
 	}) | rpl::on_next([=](bool toggled) {
 		call->setStereoMode(toggled);
 		if (call->muted() == MuteState::Active) {
 			call->setMuted(MuteState::Muted);
 			call->setMutedAndUpdate(MuteState::Active);
 		}
-		SetEnhancedValue("show_scheduled_button", toggled);
-		EnhancedSettings::Write();
+		EnhancedSettings::Set(EnhancedSettings::Option::StereoMode, toggled);
 	}, layout->lifetime());
 		using GlobalShortcut = base::GlobalShortcut;
 		struct PushToTalkState {

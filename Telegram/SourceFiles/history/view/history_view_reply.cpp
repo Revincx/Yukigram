@@ -613,8 +613,8 @@ bool Reply::isNameUpdated(
 		not_null<const Element*> view,
 		not_null<HistoryMessageReply*> data) const {
 	if (const auto from = sender(view, data)) {
-		if (_nameVersion < from->nameVersion() || GetEnhancedBool("screenshot_mode") != _previousMode) {
-			_previousMode = GetEnhancedBool("screenshot_mode");
+		if (_nameVersion < from->nameVersion() || EnhancedSettings::Get(EnhancedSettings::Option::ScreenshotMode) != _previousMode) {
+			_previousMode = EnhancedSettings::Get(EnhancedSettings::Option::ScreenshotMode);
 			updateName(view, data, from);
 			return true;
 		}
@@ -653,7 +653,7 @@ void Reply::updateName(
 		&& (forwarded->forwardOfForward()
 			|| (!message->showForwardsFromSender(forwarded)
 				&& !view->data()->Has<HistoryMessageForwarded>()));
-	const auto shorten = !GetEnhancedBool("screenshot_mode")
+	const auto shorten = !EnhancedSettings::Get(EnhancedSettings::Option::ScreenshotMode)
 		&& (!viaBotUsername.isEmpty()
 			|| groupNameAdded
 			|| originalNameAdded);

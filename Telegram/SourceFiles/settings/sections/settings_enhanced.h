@@ -12,6 +12,7 @@ https://github.com/TDesktop-x64/tdesktop/blob/dev/LEGAL
 
 #include <QPointer>
 
+#include <optional>
 #include <vector>
 
 class BoxContent;
@@ -45,10 +46,21 @@ namespace Settings {
 		void setupTranslation(not_null<Ui::VerticalLayout*> content);
 		void setupVoiceChat(not_null<Ui::VerticalLayout*> page);
 		void setupOther(not_null<Ui::VerticalLayout*> content);
-		void reqBlocked(int offset);
-		void writeBlocklistFile();
+		template <typename Value>
+		void registerHighlight(
+				EnhancedSettings::Key<Value> key,
+				not_null<Ui::RpWidget*> widget) {
+			registerHighlight(key.id, widget);
+		}
+		void registerHighlight(
+			EnhancedSettings::OptionId id,
+			not_null<Ui::RpWidget*> widget);
 		void registerHighlight(
 			QString id,
+			not_null<Ui::RpWidget*> widget);
+		void registerHighlight(
+			QString id,
+			std::optional<EnhancedSettings::OptionId> option,
 			not_null<Ui::RpWidget*> widget);
 
 		rpl::event_stream<QString> _AlwaysDeleteChanged;
@@ -57,9 +69,6 @@ namespace Settings {
 
 		std::vector<std::pair<QString, QPointer<QWidget>>> _highlightControls;
 
-		mtpRequestId _requestId = 0;
-		QList<int64> blockList;
-		int32 blockCount = 0;
 	};
 
 } // namespace Settings

@@ -2086,7 +2086,7 @@ void SessionController::activateFirstChatsFilter() {
 		return;
 	}
 	_filtersActivated = true;
-	if (!GetEnhancedBool("hide_all_chats")) {
+	if (!EnhancedSettings::Get(EnhancedSettings::Option::HideAllChats)) {
 		setActiveChatsFilter(session().data().chatsFilters().defaultId());
 	}
 }
@@ -2658,7 +2658,7 @@ auto SessionController::computeColumnLayout() const -> ColumnLayout {
 	auto dialogsWidth = 0, chatWidth = 0, thirdWidth = 0;
 
 	auto useOneColumnLayout = [&] {
-		if (GetEnhancedBool("force_mobile")) return true;
+		if (EnhancedSettings::Get(EnhancedSettings::Option::ForceMobile)) return true;
 		auto minimalNormal = st::columnMinimalWidthLeft
 			+ st::columnMinimalWidthMain;
 		if (_hasDialogs && bodyWidth < minimalNormal) {
@@ -3369,7 +3369,7 @@ void SessionController::setActiveChatsFilter(
 		closeFolder();
 		closeCommunity();
 	}
-	if (!GetEnhancedBool("hide_all_chats") && adaptive().isOneColumn()) {
+	if (!EnhancedSettings::Get(EnhancedSettings::Option::HideAllChats) && adaptive().isOneColumn()) {
 		clearSectionStack(params);
 	}
 }

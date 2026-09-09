@@ -507,7 +507,7 @@ void ApiWrap::toggleHistoryArchived(
 		if (archived) {
 			history->setFolder(_session->data().folder(archiveId));
 		} else {
-			if (GetEnhancedBool("hide_all_chats")) {
+			if (EnhancedSettings::Get(EnhancedSettings::Option::HideAllChats)) {
 				if (const auto window = Core::App().activeWindow()) {
 					if (const auto controller = window->sessionController()) {
 						const auto filters = &_session->data().chatsFilters();
@@ -5066,7 +5066,7 @@ void ApiWrap::sendMessage(
 		return;
 	}
 	local().saveRecentSentHashtags(textWithTags.text);
-	if (GetEnhancedBool("send_comment_after_forwarding")) {
+	if (EnhancedSettings::Get(EnhancedSettings::Option::SendCommentAfterForwarding)) {
 		finishForwarding(action);
 	}
 

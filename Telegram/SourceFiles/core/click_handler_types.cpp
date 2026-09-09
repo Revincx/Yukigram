@@ -307,7 +307,7 @@ void HiddenUrlClickHandler::Open(QString url, QVariant context) {
 		const auto open = [=] {
 			UrlClickHandler::Open(url, openContext);
 		};
-		if (!GetEnhancedBool("disable_link_warning")
+		if (!EnhancedSettings::Get(EnhancedSettings::Option::DisableLinkWarning)
 			&& (forceConfirmation
 				|| (confirmAfterIvFallback && !canTryIv)
 				|| (HiddenUrlRequiresConfirmation(parsedUrl)

@@ -31,26 +31,33 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 namespace {
 
-constexpr auto kRichMessagePreviewMaxIndex
-	= EnhancedSettings::kRichMessagePreviewBlocksLimitMax
-		- EnhancedSettings::kRichMessagePreviewBlocksLimitMin;
 constexpr auto kRichMessagePreviewDefaultGapSections = 5;
-constexpr auto kRichMessagePreviewDefaultIndex
-	= kRichMessagePreviewMaxIndex + kRichMessagePreviewDefaultGapSections;
-constexpr auto kRichMessagePreviewValuesCount
-	= kRichMessagePreviewDefaultIndex + 1;
+
+[[nodiscard]] EnhancedSettings::IntegerConstraint RichMessageConstraint() {
+	return EnhancedSettings::IntegerConstraintFor(
+		EnhancedSettings::Option::RichMessagePreviewBlocksLimit);
+}
+
+[[nodiscard]] int RichMessageMaxIndex() {
+	const auto constraint = RichMessageConstraint();
+	return constraint.maximum - constraint.minimum;
+}
+
+[[nodiscard]] int RichMessageDefaultIndex() {
+	return RichMessageMaxIndex() + kRichMessagePreviewDefaultGapSections;
+}
 
 [[nodiscard]] int RichMessagePreviewLimitForIndex(int index) {
-	return (index == kRichMessagePreviewDefaultIndex)
+	const auto constraint = RichMessageConstraint();
+	return (index == RichMessageDefaultIndex())
 		? 0
-		: (EnhancedSettings::kRichMessagePreviewBlocksLimitMin
-			+ std::min(index, kRichMessagePreviewMaxIndex));
+		: (constraint.minimum + std::min(index, RichMessageMaxIndex()));
 }
 
 [[nodiscard]] int RichMessagePreviewIndexForLimit(int limit) {
 	return limit
-		? (limit - EnhancedSettings::kRichMessagePreviewBlocksLimitMin)
-		: kRichMessagePreviewDefaultIndex;
+		? (limit - RichMessageConstraint().minimum)
+		: RichMessageDefaultIndex();
 }
 
 [[nodiscard]] QString RichMessagePreviewBlocksLabel(int limit) {
@@ -73,18 +80,18 @@ void ExtraContextMenuBox::prepare() {
 	auto y = st::boxOptionListPadding.top() + st::boxMediumSkip;
 
 	struct OptionEntry {
-		ExtraContextMenuOption value;
+		EnhancedSettings::ExtraContextMenuOption value;
 		QString label;
 	};
 	const auto options = std::vector<OptionEntry>{
-		{ ExtraContextMenuOption::Repeater, tr::lng_context_repeater(tr::now) },
-		{ ExtraContextMenuOption::MoreForward, tr::lng_context_more_forward(tr::now) },
-		{ ExtraContextMenuOption::HideMessage, tr::lng_context_hide_message(tr::now) },
-		{ ExtraContextMenuOption::ViewAsJson, tr::lng_context_view_as_json(tr::now) },
+		{ EnhancedSettings::ExtraContextMenuOption::Repeater, tr::lng_context_repeater(tr::now) },
+		{ EnhancedSettings::ExtraContextMenuOption::MoreForward, tr::lng_context_more_forward(tr::now) },
+		{ EnhancedSettings::ExtraContextMenuOption::HideMessage, tr::lng_context_hide_message(tr::now) },
+		{ EnhancedSettings::ExtraContextMenuOption::ViewAsJson, tr::lng_context_view_as_json(tr::now) },
 	};
 
 	for (const auto &[optValue, label] : options) {
-		const auto checked = HasExtraContextMenuOption(optValue);
+		const auto checked = EnhancedSettings::HasExtraContextMenuOption(optValue);
 		const auto checkbox = Ui::CreateChild<Ui::Checkbox>(
 			this,
 			label,
@@ -94,18 +101,18 @@ void ExtraContextMenuBox::prepare() {
 		const auto optInt = static_cast<int>(optValue);
 		checkbox->checkedChanges(
 		) | rpl::filter([=](bool isChecked) {
-			return isChecked != HasExtraContextMenuOption(
-				static_cast<ExtraContextMenuOption>(optInt));
+			return isChecked != EnhancedSettings::HasExtraContextMenuOption(
+				static_cast<EnhancedSettings::ExtraContextMenuOption>(optInt));
 		}) | rpl::on_next([=](bool isChecked) {
-			auto list = GetEnhancedIntList("extra_context_menu_options");
+			auto list = EnhancedSettings::Get(EnhancedSettings::Option::ExtraContextMenuOptions);
 			if (isChecked && !list.contains(optInt)) {
 				list.append(optInt);
 			} else if (!isChecked) {
 				list.removeAll(optInt);
 			}
-			SetEnhancedValue("extra_context_menu_options",
-				QVariant::fromValue(list));
-			EnhancedSettings::Write();
+			EnhancedSettings::Set(
+				EnhancedSettings::Option::ExtraContextMenuOptions,
+				std::move(list));
 		}, lifetime());
 	}
 
@@ -123,7 +130,7 @@ void RadioController::prepare() {
 	addButton(tr::lng_settings_save(), [=] { save(); });
 	addButton(tr::lng_cancel(), [=] { closeBox(); });
 
-	_url->setText(GetEnhancedString("radio_controller"));
+	_url->setText(EnhancedSettings::Get(EnhancedSettings::Option::RadioController));
 
 	setDimensions(st::boxWidth, _url->height());
 }
@@ -145,8 +152,7 @@ void RadioController::save() {
 	if (host == "") {
 		host = "http://localhost:2468";
 	}
-	SetEnhancedValue("radio_controller", host);
-	EnhancedSettings::Write();
+	EnhancedSettings::Set(EnhancedSettings::Option::RadioController, host);
 	closeBox();
 }
 
@@ -169,7 +175,7 @@ void BitrateController::prepare() {
 
 	y += _description->height() + st::boxMediumSkip;
 
-	_bitrateGroup = std::make_shared<Ui::RadiobuttonGroup>(GetEnhancedInt("bitrate"));
+	_bitrateGroup = std::make_shared<Ui::RadiobuttonGroup>(EnhancedSettings::Get(EnhancedSettings::Option::Bitrate));
 
 	for (int i = 0; i <= 7; i++) {
 		const auto button = Ui::CreateChild<Ui::Radiobutton>(
@@ -209,9 +215,10 @@ QString BitrateController::BitrateLabel(int boost) {
 }
 
 void BitrateController::save() {
-	SetEnhancedValue("bitrate", _bitrateGroup->current());
-	EnhancedSettings::Write();
-	Ui::Toast::Show(tr::lng_bitrate_controller_hint(tr::now));
+	EnhancedSettings::ApplyOption(
+		App::wnd()->sessionController(),
+		EnhancedSettings::Option::Bitrate,
+		_bitrateGroup->current());
 	closeBox();
 }
 
@@ -234,7 +241,7 @@ void RichMessagePreviewBlocksBox::prepare() {
 		st::boxWidth - st::boxPadding.left() - st::boxPadding.right());
 	y += _description->height() + st::boxMediumSkip;
 
-	_limit = EnhancedSettings::RichMessagePreviewBlocksLimit();
+	_limit = EnhancedSettings::Get(EnhancedSettings::Option::RichMessagePreviewBlocksLimit);
 	_current.create(
 		this,
 		_limit
@@ -254,36 +261,36 @@ void RichMessagePreviewBlocksBox::prepare() {
 	_slider->moveToLeft(st::boxPadding.left(), y);
 
 	_slider->setPseudoDiscrete(
-		kRichMessagePreviewValuesCount,
+		RichMessageDefaultIndex() + 1,
 		[](int index) { return index; },
 		RichMessagePreviewIndexForLimit(_limit),
 		[=](int index) {
 			_limit = RichMessagePreviewLimitForIndex(index);
 			updateCurrentLabel();
 		});
+	const auto constraint = RichMessageConstraint();
 	for (const auto limit : {
-		EnhancedSettings::kRichMessagePreviewBlocksLimitMin,
+		constraint.minimum,
 		15,
 		25,
 		35,
-		EnhancedSettings::kRichMessagePreviewBlocksLimitMax,
+		constraint.maximum,
 	}) {
 		const auto progress = (limit
-			- EnhancedSettings::kRichMessagePreviewBlocksLimitMin)
-			/ float64(kRichMessagePreviewDefaultIndex);
+			- constraint.minimum)
+			/ float64(RichMessageDefaultIndex());
 		_slider->addDivider(
 			progress,
 			st::richMessagePreviewBlocksDivider);
 	}
 	_slider->addDivider(
-		(kRichMessagePreviewMaxIndex + 1.)
-			/ kRichMessagePreviewDefaultIndex,
+		(RichMessageMaxIndex() + 1.) / RichMessageDefaultIndex(),
 		st::richMessagePreviewBlocksDefaultDivider);
 
 	y += _slider->height() + st::richMessagePreviewBlocksTickSkip;
 	const auto minimum = Ui::CreateChild<Ui::FlatLabel>(
 		this,
-		QString::number(EnhancedSettings::kRichMessagePreviewBlocksLimitMin),
+		QString::number(constraint.minimum),
 		st::richMessagePreviewBlocksTick);
 	const auto defaultLabel = Ui::CreateChild<Ui::FlatLabel>(
 		this,
@@ -297,8 +304,8 @@ void RichMessagePreviewBlocksBox::prepare() {
 			QString::number(limit),
 			st::richMessagePreviewBlocksTick);
 		const auto progress = (limit
-			- EnhancedSettings::kRichMessagePreviewBlocksLimitMin)
-			/ float64(kRichMessagePreviewDefaultIndex);
+			- constraint.minimum)
+			/ float64(RichMessageDefaultIndex());
 		const auto position = st::boxPadding.left()
 			+ (st::localStorageLimitSlider.seekSize.width() / 2)
 			+ base::SafeRound(progress * (sliderWidth
@@ -319,13 +326,9 @@ void RichMessagePreviewBlocksBox::updateCurrentLabel() {
 }
 
 void RichMessagePreviewBlocksBox::save() {
-	const auto changed = (_limit
-		!= EnhancedSettings::RichMessagePreviewBlocksLimit());
-	EnhancedSettings::SetRichMessagePreviewBlocksLimit(_limit);
-	EnhancedSettings::Write();
-	if (changed) {
-		App::wnd()->sessionController()->session().data().histories()
-			.refreshRichMessageViews();
-	}
+	EnhancedSettings::ApplyOption(
+		App::wnd()->sessionController(),
+		EnhancedSettings::Option::RichMessagePreviewBlocksLimit,
+		_limit);
 	closeBox();
 }

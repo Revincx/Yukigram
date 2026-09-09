@@ -410,7 +410,7 @@ void MessageView::paint(
 	if (geometry.isEmpty()) {
 		return;
 	}
-	if (GetEnhancedBool("screenshot_mode")) {
+	if (EnhancedSettings::Get(EnhancedSettings::Option::ScreenshotMode)) {
 		return;
 	}
 	_lastPaintGeometry = geometry;

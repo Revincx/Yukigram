@@ -6,6 +6,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "core/chat_enhanced_settings.h"
 
+#include "core/enhanced_settings.h"
 #include "data/data_chat.h"
 #include "data/data_peer.h"
 #include "data/data_peer_id.h"
@@ -14,7 +15,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_session.h"
 #include "rpl/event_stream.h"
 #include "storage/storage_account.h"
-#include "settings.h"
 
 #include <array>
 #include <string_view>
@@ -22,45 +22,16 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 namespace EnhancedSettings {
 namespace {
 
-using GlobalValue = bool (*)();
 using ValueChanged = void (*)(not_null<PeerData*>, bool);
 
 struct ChatFeatureDescriptor {
 	ChatFeature feature = ChatFeature::Count;
 	std::string_view storageKey;
-	GlobalValue globalValue = nullptr;
+	Key<bool> globalValue;
 	ValueChanged valueChanged = nullptr;
 };
 
 rpl::event_stream<ChatFeatureChange> ChatFeatureChangeEvents;
-
-bool ForceShowWebPagePreviewGlobalValue() {
-	return GetEnhancedBool(u"force_show_webpage_preview"_q);
-}
-
-bool DisableAutoFetchWebPagePreviewGlobalValue() {
-	return GetEnhancedBool(u"disable_auto_fetch_webpage_preview"_q);
-}
-
-bool RemoveMediaSpoilerGlobalValue() {
-	return GetEnhancedBool(u"remove_media_spoiler"_q);
-}
-
-bool HideBlockedMessagesGlobalValue() {
-	return GetEnhancedBool(u"blocked_user_spoiler_mode"_q);
-}
-
-bool ShowScheduledButtonGlobalValue() {
-	return GetEnhancedBool(u"show_scheduled_button"_q);
-}
-
-bool DisableCloudDraftSyncGlobalValue() {
-	return GetEnhancedBool(u"disable_cloud_draft_sync"_q);
-}
-
-bool DisableSyncDraftToCloudGlobalValue() {
-	return GetEnhancedBool(u"disable_sync_draft_to_cloud"_q);
-}
 
 template <typename Callback>
 void ForEachLoadedHistory(
@@ -113,40 +84,40 @@ constexpr auto kChatFeatureDescriptors = std::array{
 	ChatFeatureDescriptor{
 		.feature = ChatFeature::ForceShowWebPagePreview,
 		.storageKey = "force_show_webpage_preview",
-		.globalValue = ForceShowWebPagePreviewGlobalValue,
+		.globalValue = Option::ForceShowWebPagePreview,
 		.valueChanged = ForceShowWebPagePreviewValueChanged,
 	},
 	ChatFeatureDescriptor{
 		.feature = ChatFeature::DisableAutoFetchWebPagePreview,
 		.storageKey = "disable_auto_fetch_webpage_preview",
-		.globalValue = DisableAutoFetchWebPagePreviewGlobalValue,
+		.globalValue = Option::DisableAutoFetchWebPagePreview,
 	},
 	ChatFeatureDescriptor{
 		.feature = ChatFeature::RemoveMediaSpoiler,
 		.storageKey = "remove_media_spoiler",
-		.globalValue = RemoveMediaSpoilerGlobalValue,
+		.globalValue = Option::RemoveMediaSpoiler,
 		.valueChanged = RemoveMediaSpoilerValueChanged,
 	},
 	ChatFeatureDescriptor{
 		.feature = ChatFeature::HideBlockedMessages,
 		.storageKey = "hide_blocked_messages",
-		.globalValue = HideBlockedMessagesGlobalValue,
+		.globalValue = Option::HideBlockedMessages,
 		.valueChanged = HideBlockedMessagesValueChanged,
 	},
 	ChatFeatureDescriptor{
 		.feature = ChatFeature::ShowScheduledButton,
 		.storageKey = "show_scheduled_button",
-		.globalValue = ShowScheduledButtonGlobalValue,
+		.globalValue = Option::ShowScheduledButton,
 	},
 	ChatFeatureDescriptor{
 		.feature = ChatFeature::DisableCloudDraftSync,
 		.storageKey = "disable_cloud_draft_sync",
-		.globalValue = DisableCloudDraftSyncGlobalValue,
+		.globalValue = Option::DisableCloudDraftSync,
 	},
 	ChatFeatureDescriptor{
 		.feature = ChatFeature::DisableSyncDraftToCloud,
 		.storageKey = "disable_sync_draft_to_cloud",
-		.globalValue = DisableSyncDraftToCloudGlobalValue,
+		.globalValue = Option::DisableSyncDraftToCloud,
 	},
 };
 static_assert(
@@ -211,10 +182,9 @@ bool ResolveChatFeature(
 		not_null<PeerData*> peer,
 		ChatFeature feature) {
 	const auto &descriptor = DescriptorFor(feature);
-	Expects(descriptor.globalValue != nullptr);
 	switch (ReadOverride(peer, descriptor)) {
 	case ChatFeatureOverride::Default:
-		return descriptor.globalValue();
+		return Get(descriptor.globalValue);
 	case ChatFeatureOverride::Enabled:
 		return true;
 	case ChatFeatureOverride::Disabled:

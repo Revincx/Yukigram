@@ -286,7 +286,7 @@ void Cover::initViewers() {
 	Info::Profile::PhoneValue(
 		_user
 	) | rpl::on_next([=](const TextWithEntities &value) {
-		if (GetEnhancedBool("show_phone_number")) {
+		if (EnhancedSettings::Get(EnhancedSettings::Option::ShowPhoneNumber)) {
 			_phoneText = value.text;
 			updatePhoneText();
 		} else {

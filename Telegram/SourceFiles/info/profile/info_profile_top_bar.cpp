@@ -393,7 +393,7 @@ TopBar::TopBar(
 			: st::infoProfileTopBarActionButtonsHeight);
 }())
 , _title(this, nameValue(), _st.title)
-, _starsRating((_peer->isUser() && !_savedMessages && !GetEnhancedBool("hide_star_ratings"))
+, _starsRating((_peer->isUser() && !_savedMessages && !EnhancedSettings::Get(EnhancedSettings::Option::HideStarRatings))
 	? std::make_unique<Ui::StarsRating>(
 		this,
 		descriptor.controller->uiShow(),

@@ -91,8 +91,8 @@ void BlockedPeers::block(not_null<PeerData*> peer) {
 		const auto data = _blockRequests.take(peer);
 		peer->setIsBlocked(true);
 
-		if (!blockExist(peer->id.value)) {
-			EnhancedSettings::Manager().addIdToBlocklist(
+		if (!EnhancedSettings::BlocklistContains(peer->id.value)) {
+			EnhancedSettings::AddIdToBlocklist(
 				int64(peer->id.value));
 		}
 		auto &histories = _session->data().histories();
@@ -143,8 +143,8 @@ void BlockedPeers::unblock(
 		const auto data = _blockRequests.take(peer);
 		peer->setIsBlocked(false);
 
-		if (blockExist(peer->id.value)) {
-			EnhancedSettings::Manager().removeIdFromBlocklist(
+		if (EnhancedSettings::BlocklistContains(peer->id.value)) {
+			EnhancedSettings::RemoveIdFromBlocklist(
 				int64(peer->id.value));
 		}
 		auto &histories = _session->data().histories();

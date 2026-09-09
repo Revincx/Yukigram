@@ -188,9 +188,8 @@ auto GenerateCodes() {
 			: u"WebView transport unblocked."_q);
 	});
 	codes.emplace(u"allow-screenshot"_q, [](SessionController *window) {
-		const auto allowed = !EnhancedSettings::AllowScreenshots();
-		EnhancedSettings::SetAllowScreenshots(allowed);
-		EnhancedSettings::Write();
+		const auto allowed = !EnhancedSettings::Get(EnhancedSettings::Option::AllowScreenshots);
+		EnhancedSettings::Set(EnhancedSettings::Option::AllowScreenshots, allowed);
 		Ui::Toast::Show(allowed
 			? u"Screenshot protection disabled."_q
 			: u"Screenshot protection enabled."_q);
