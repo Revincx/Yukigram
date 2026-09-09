@@ -2088,6 +2088,14 @@ void RegisterSettingsHandlers(Router &router) {
 	});
 
 	router.add(u"settings"_q, {
+		.path = u"enhanced/link-preview-replacements"_q,
+		.action = SettingsControl{
+			::Settings::EnhancedId(),
+			u"enhanced/link-preview-replacements"_q,
+		},
+	});
+
+	router.add(u"settings"_q, {
 		.path = u"enhanced/show-server-config"_q,
 		.action = SettingsControl{
 			::Settings::EnhancedId(),

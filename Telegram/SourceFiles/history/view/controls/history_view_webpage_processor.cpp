@@ -9,6 +9,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "base/unixtime.h"
 #include "core/chat_enhanced_settings.h"
+#include "core/enhanced_settings.h"
 #include "data/data_chat_participant_status.h"
 #include "data/data_file_origin.h"
 #include "data/data_session.h"
@@ -234,6 +235,13 @@ WebpageProcessor::WebpageProcessor(
 		checkPreview();
 	}, _lifetime);
 
+	EnhancedSettings::PreviewRulesChanges() | rpl::on_next([=] {
+		if (!_draft.manual) {
+			_links.clear();
+			checkPreview();
+		}
+	}, _lifetime);
+
 	_resolver->resolved() | rpl::on_next([=](QString link) {
 		if (_link != link
 			|| _draft.removed
@@ -262,9 +270,19 @@ Data::WebPageDraft WebpageProcessor::draft() const {
 }
 
 Data::WebPageDraft WebpageProcessor::draftForSending() const {
-	return (!_draft.manual && automaticFetchDisabled())
-		? Data::WebPageDraft{ .removed = true }
-		: _draft;
+	if (!_draft.manual && automaticFetchDisabled()) {
+		return { .removed = true };
+	}
+	if (_draft.manual || _draft.removed) {
+		return _draft;
+	}
+	if (const auto source = link(); !source.isEmpty() && source != _link) {
+		auto result = _draft;
+		result.url = _link;
+		result.manual = true;
+		return result;
+	}
+	return _draft;
 }
 
 std::shared_ptr<WebpageResolver> WebpageProcessor::resolver() const {
@@ -276,6 +294,14 @@ const std::vector<MessageLinkRange> &WebpageProcessor::links() const {
 }
 
 QString WebpageProcessor::link() const {
+	if (!_draft.manual) {
+		for (const auto &source : _links) {
+			if (EnhancedSettings::PreviewRules().replaceDomain(source)
+					== _link) {
+				return source;
+			}
+		}
+	}
 	return _link;
 }
 
@@ -399,14 +425,13 @@ bool WebpageProcessor::automaticFetchDisabled() const {
 }
 
 void WebpageProcessor::checkPreview() {
-	const auto previewRestricted = _history->peer
-		&& _history->peer->amRestricted(ChatRestriction::EmbedLinks);
 	if (_parsedLinks.empty()) {
 		_draft.removed = false;
 	}
 	if (_draft.removed) {
 		return;
-	} else if (previewRestricted) {
+	} else if (_history->peer
+		&& _history->peer->amRestricted(ChatRestriction::EmbedLinks)) {
 		apply({ .removed = true });
 		_draft.removed = false;
 		return;
@@ -433,7 +458,8 @@ void WebpageProcessor::checkPreview() {
 
 	auto page = (WebPageData*)nullptr;
 	auto chosen = QString();
-	for (const auto &link : _links) {
+	for (const auto &source : _links) {
+		const auto link = EnhancedSettings::PreviewRules().replaceDomain(source);
 		const auto value = _resolver->lookup(link);
 		if (!value) {
 			chosen = link;

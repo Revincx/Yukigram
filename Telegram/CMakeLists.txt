@@ -333,6 +333,8 @@ PRIVATE
     boxes/gift_premium_box.h
     boxes/language_box.cpp
     boxes/language_box.h
+    boxes/link_preview_rules_box.cpp
+    boxes/link_preview_rules_box.h
     boxes/max_invite_box.cpp
     boxes/max_invite_box.h
     boxes/enhanced_options_box.cpp
@@ -575,6 +577,8 @@ PRIVATE
     core/deadlock_detector.h
     core/enhanced_settings.cpp
     core/enhanced_settings.h
+    core/link_preview_rules.cpp
+    core/link_preview_rules.h
     core/msg_extra_state.cpp
     core/msg_extra_state.h
     core/deep_links/deep_links_chats.cpp

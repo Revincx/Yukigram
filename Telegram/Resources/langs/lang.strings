@@ -8948,3 +8948,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_folder_archive_status" = "ZIP archive";
 
 // Keys finished
+
+"lng_link_preview_rules_title" = "Link preview domain replacements";
+"lng_link_preview_rules_about" = "Custom rules to replace to the domain of link previews. Regular expressions match anywhere in the URL, only the domain is replaced.";
+"lng_link_preview_rules_empty" = "No rules yet.";
+"lng_link_preview_rule_add" = "Add Rule";
+"lng_link_preview_rule_edit" = "Edit Rule";
+"lng_link_preview_rule_pattern" = "URL Regex";
+"lng_link_preview_rule_domain" = "Domain";

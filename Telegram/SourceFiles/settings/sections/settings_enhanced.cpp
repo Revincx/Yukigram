@@ -27,6 +27,8 @@ https://github.com/TDesktop-x64/tdesktop/blob/dev/LEGAL
 #include "ui/text/text_utilities.h" // Ui::Text::ToUpper
 #include "boxes/connection_box.h"
 #include "boxes/enhanced_options_box.h"
+#include "boxes/link_preview_rules_box.h"
+#include "ui/layers/generic_box.h"
 #include "boxes/about_box.h"
 #include "ui/boxes/confirm_box.h"
 #include "platform/platform_specific.h"
@@ -271,6 +273,15 @@ constexpr auto kStickerHeightValuesCount = kStickerHeightMaxIndex + 1;
 			},
 			.deeplink
 				= u"tg://settings/enhanced/hide-delete-for-others-checkbox"_q,
+		};
+	});
+
+	builder.add(nullptr, [] {
+		return Builder::SearchEntry{
+			.id = u"enhanced/link-preview-replacements"_q,
+			.title = tr::lng_link_preview_rules_title(tr::now),
+			.keywords = { u"link"_q, u"preview"_q, u"domain"_q, u"regex"_q },
+			.deeplink = u"tg://settings/enhanced/link-preview-replacements"_q,
 		};
 	});
 
@@ -1039,6 +1050,7 @@ constexpr auto kStickerHeightValuesCount = kStickerHeightMaxIndex + 1;
 	}
 
 	void Enhanced::setupBehavior(not_null<Ui::VerticalLayout*> content) {
+
 		const auto showSimilarOnJoined = AddButtonWithIcon(
 				content,
 				tr::lng_settings_show_similar_on_joined(),
@@ -1272,6 +1284,17 @@ constexpr auto kStickerHeightValuesCount = kStickerHeightMaxIndex + 1;
 			SetEnhancedValue("community_chat_click", enabled);
 			EnhancedSettings::Write();
 		}, content->lifetime());
+
+		const auto previewRules = AddButtonWithIcon(
+			content,
+			tr::lng_link_preview_rules_title(),
+			st::settingsButtonNoIcon);
+		registerHighlight(
+			u"enhanced/link-preview-replacements"_q,
+			previewRules);
+		previewRules->addClickHandler([=] {
+			Ui::show(Box(LinkPreviewRulesBox));
+		});
 	}
 
 	void Enhanced::setupTranslation(not_null<Ui::VerticalLayout*> content) {

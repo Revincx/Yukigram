@@ -6,11 +6,16 @@ https://github.com/TDesktop-x64/tdesktop/blob/dev/LEGAL
 */
 #pragma once
 
+#include "core/link_preview_rules.h"
 #include "rpl/producer.h"
 
 #include <QtCore/QTimer>
 
 namespace EnhancedSettings {
+
+	[[nodiscard]] const Core::LinkPreviewRules &PreviewRules();
+	void SetPreviewRules(std::vector<Core::LinkPreviewRule> rules);
+	[[nodiscard]] rpl::producer<> PreviewRulesChanges();
 
 	inline constexpr auto kRichMessagePreviewBlocksLimitMin = 5;
 	inline constexpr auto kRichMessagePreviewBlocksLimitMax = 50;

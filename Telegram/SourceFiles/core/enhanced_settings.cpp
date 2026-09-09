@@ -12,6 +12,7 @@ https://github.com/TDesktop-x64/tdesktop/blob/dev/LEGAL
 #include "core/application.h"
 #include "base/parse_helper.h"
 #include "facades.h"
+#include "rpl/event_stream.h"
 #include "rpl/variable.h"
 #include "ui/widgets/fields/input_field.h"
 #include "lang/lang_cloud_manager.h"
@@ -26,6 +27,9 @@ namespace EnhancedSettings {
 	namespace {
 
 		constexpr auto kWriteJsonTimeout = crl::time(5000);
+		constexpr auto kPreviewRulesKey = "link_preview_replace_rules";
+		Core::LinkPreviewRules previewRules;
+		rpl::event_stream<> previewRulesChanges;
 		constexpr auto kRichMessagePreviewBlocksLimitKey
 			= "rich_message_preview_max_blocks";
 		constexpr auto kForceShowWebPagePreviewKey
@@ -127,6 +131,22 @@ namespace EnhancedSettings {
 
 	} // namespace
 
+	const Core::LinkPreviewRules &PreviewRules() {
+		return previewRules;
+	}
+
+	void SetPreviewRules(std::vector<Core::LinkPreviewRule> rules) {
+		const auto previous = previewRules.rules();
+		previewRules.setRules(std::move(rules));
+		if (previewRules.rules() != previous) {
+			previewRulesChanges.fire({});
+		}
+	}
+
+	rpl::producer<> PreviewRulesChanges() {
+		return previewRulesChanges.events();
+	}
+
 	int RichMessagePreviewBlocksLimit() {
 		return NormalizeRichMessagePreviewBlocksLimit(
 			GetEnhancedInt(kRichMessagePreviewBlocksLimitKey));
@@ -178,6 +198,7 @@ namespace EnhancedSettings {
 	}
 
 	void Manager::fill() {
+		SetPreviewRules({});
 		if (!DefaultFileIsValid()) {
 			writeDefaultFile();
 		}
@@ -194,6 +215,7 @@ namespace EnhancedSettings {
 	void Manager::reset() {
 		writing();
 		cSetEnhancedOptions({});
+		SetPreviewRules({});
 		writeDefaultFile();
 		SetAllowScreenshots(GetEnhancedBool(kAllowScreenshotsKey));
 		SetShowGroupSenderOnlineStatus(
@@ -231,7 +253,9 @@ namespace EnhancedSettings {
 		} else if (!document.isObject()) {
 			return true;
 		}
-		const auto settings = document.object();
+		auto settings = document.object();
+		SetPreviewRules(Core::LinkPreviewRules::FromJson(
+			settings.take(kPreviewRulesKey).toArray()));
 
 		if (settings.isEmpty()) {
 			return true;
@@ -350,6 +374,7 @@ namespace EnhancedSettings {
 		settings.insert(qsl("hd_video"), false);
 		settings.insert(qsl("skip_to_next"), false);
 		settings.insert(qsl("disable_link_warning"), false);
+		settings.insert(kPreviewRulesKey, QJsonArray());
 		settings.insert(qsl("blocked_user_spoiler_mode"), false);
 		settings.insert(qsl("disable_premium_animation"), false);
 		settings.insert(qsl("disable_global_search"), false);
@@ -424,6 +449,7 @@ namespace EnhancedSettings {
 		settings.insert(qsl("hd_video"), GetEnhancedBool("hd_video"));
 		settings.insert(qsl("skip_to_next"), GetEnhancedBool("skip_to_next"));
 		settings.insert(qsl("disable_link_warning"), GetEnhancedBool("disable_link_warning"));
+		settings.insert(kPreviewRulesKey, previewRules.toJson());
 		settings.insert(qsl("blocked_user_spoiler_mode"), GetEnhancedBool("blocked_user_spoiler_mode"));
 		settings.insert(qsl("disable_premium_animation"), GetEnhancedBool("disable_premium_animation"));
 		settings.insert(qsl("disable_global_search"), GetEnhancedBool("disable_global_search"));
