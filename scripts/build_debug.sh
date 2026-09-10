@@ -51,6 +51,7 @@ cmake -S "${repo_root}" -B "${output_dir}" -G Ninja \
 	-DTDESKTOP_API_HASH="${API_HASH}" \
 	-DDESKTOP_APP_DISABLE_AUTOUPDATE=ON \
 	-DDESKTOP_APP_USE_PACKAGED=ON \
+    -DDESKTOP_APP_USE_PANGO=OFF \
 	-DCMAKE_JOB_POOLS="compile=10;link=12" \
 	-DCMAKE_JOB_POOL_COMPILE=compile \
 	-DCMAKE_JOB_POOL_LINK=link \

@@ -161,6 +161,7 @@ jobs:
             "$IMAGE_REF" \
             /usr/src/tdesktop/Telegram/build/docker/centos_env/build.sh \
             -D DESKTOP_APP_USE_PACKAGED=ON \
+            -D DESKTOP_APP_USE_PANGO=OFF \
             -D TDESKTOP_API_ID="${{ secrets.API_ID }}" \
             -D TDESKTOP_API_HASH="${{ secrets.API_HASH }}"
 
