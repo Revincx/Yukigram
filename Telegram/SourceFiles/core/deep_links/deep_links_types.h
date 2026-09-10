@@ -33,12 +33,14 @@ using Handler = Fn<Result(const Context&)>;
 
 struct SettingsSection {
 	Settings::Type sectionId;
+	Handler chatHandler;
 };
 
 struct SettingsControl {
 	Settings::Type sectionId;
 	QString controlId;
 	Handler valueHandler;
+	Handler chatHandler;
 };
 
 struct CodeBlock {

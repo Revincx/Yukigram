@@ -22,6 +22,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 namespace EnhancedSettings {
 namespace {
 
+constexpr auto kChannelIdOffset = int64(1000000000000);
+
 using ValueChanged = void (*)(not_null<PeerData*>, bool);
 
 struct ChatFeatureDescriptor {
@@ -171,6 +173,70 @@ ChatFeatureOverride ReadOverride(
 }
 
 } // namespace
+
+OptionId OptionForChatFeature(ChatFeature feature) {
+	return DescriptorFor(feature).globalValue.id;
+}
+
+std::optional<ChatFeature> ChatFeatureForOption(OptionId id) {
+	for (const auto &descriptor : kChatFeatureDescriptors) {
+		if (descriptor.globalValue.id == id) {
+			return descriptor.feature;
+		}
+	}
+	return std::nullopt;
+}
+
+QString ChatFeatureOverrideValue(ChatFeatureOverride value) {
+	switch (value) {
+	case ChatFeatureOverride::Default:
+		return u"default"_q;
+	case ChatFeatureOverride::Enabled:
+		return u"enabled"_q;
+	case ChatFeatureOverride::Disabled:
+		return u"disabled"_q;
+	}
+	Unexpected("Unknown ChatFeatureOverride.");
+}
+
+std::optional<ChatFeatureOverride> ParseChatFeatureOverride(
+		const QString &value) {
+	for (const auto candidate : {
+		ChatFeatureOverride::Default,
+		ChatFeatureOverride::Enabled,
+		ChatFeatureOverride::Disabled,
+	}) {
+		if (ChatFeatureOverrideValue(candidate) == value) {
+			return candidate;
+		}
+	}
+	return std::nullopt;
+}
+
+QString ChatPeerIdForLink(PeerId peerId) {
+	const auto valid = peerIsUser(peerId)
+		|| peerIsChat(peerId)
+		|| peerIsChannel(peerId);
+	const auto bare = peerId.value & PeerId::kChatTypeMask;
+	return (valid && bare) ? QString::number(peerId.value) : QString();
+}
+
+PeerId ChatPeerIdFromLink(const QString &value) {
+	auto ok = false;
+	const auto number = value.toULongLong(&ok);
+	if (!ok || !number || QString::number(number) != value) {
+		return 0;
+	}
+
+	const auto peerId = PeerId(PeerIdHelper(number));
+	const auto bare = peerId.value & PeerId::kChatTypeMask;
+	return (bare
+		&& (peerIsUser(peerId)
+			|| peerIsChat(peerId)
+			|| peerIsChannel(peerId)))
+		? peerId
+		: PeerId(0);
+}
 
 ChatFeatureOverride GetChatFeatureOverride(
 		not_null<PeerData*> peer,

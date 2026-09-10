@@ -6,11 +6,16 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #pragma once
 
+#include "data/data_peer_id.h"
 #include "rpl/producer.h"
+
+#include <optional>
 
 class PeerData;
 
 namespace EnhancedSettings {
+
+enum class OptionId;
 
 enum class ChatFeature {
 	ForceShowWebPagePreview,
@@ -33,6 +38,14 @@ struct ChatFeatureChange {
 	PeerData *peer = nullptr;
 	ChatFeature feature = ChatFeature::Count;
 };
+
+[[nodiscard]] OptionId OptionForChatFeature(ChatFeature feature);
+[[nodiscard]] std::optional<ChatFeature> ChatFeatureForOption(OptionId id);
+[[nodiscard]] QString ChatFeatureOverrideValue(ChatFeatureOverride value);
+[[nodiscard]] std::optional<ChatFeatureOverride> ParseChatFeatureOverride(
+	const QString &value);
+[[nodiscard]] QString ChatPeerIdForLink(PeerId peerId);
+[[nodiscard]] PeerId ChatPeerIdFromLink(const QString &value);
 
 [[nodiscard]] ChatFeatureOverride GetChatFeatureOverride(
 	not_null<PeerData*> peer,

@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "settings/sections/settings_chat_enhanced.h"
 
 #include "core/chat_enhanced_settings.h"
+#include "core/enhanced_settings.h"
 #include "data/data_chat_participant_status.h"
 #include "data/data_peer.h"
 #include "history/view/history_view_chat_preview.h"
@@ -17,12 +18,14 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/boxes/single_choice_box.h"
 #include "ui/controls/userpic_button.h"
 #include "ui/layers/generic_box.h"
+#include "ui/text/text_utilities.h"
+#include "ui/toast/toast.h"
 #include "ui/widgets/buttons.h"
 #include "ui/widgets/labels.h"
+#include "ui/widgets/popup_menu.h"
 #include "ui/wrap/vertical_layout.h"
 #include "ui/ui_utility.h"
 #include "ui/vertical_list.h"
-#include "ui/toast/toast.h"
 #include "window/window_session_controller.h"
 
 #include <array>
@@ -35,6 +38,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_chat.h"
 #include "styles/style_chat_helpers.h"
 #include "styles/style_layers.h"
+#include "styles/style_menu_icons.h"
 #include "styles/style_settings.h"
 #include "styles/style_window.h"
 
@@ -90,6 +94,7 @@ public:
 	[[nodiscard]] Type id() const override;
 	[[nodiscard]] rpl::producer<QString> title() override;
 	[[nodiscard]] bool centerLayerVertically() const override;
+	void showFinished() override;
 	[[nodiscard]] base::unique_qptr<Ui::RpWidget> createTopBarButton(
 		QWidget *parent,
 		bool layer) override;
@@ -99,6 +104,7 @@ private:
 
 	const Type _id;
 	const not_null<PeerData*> _peer;
+	std::vector<std::pair<QString, QPointer<QWidget>>> _highlightControls;
 	std::array<
 		std::shared_ptr<rpl::variable<Override>>,
 		static_cast<std::size_t>(Feature::Count)> _values;
@@ -144,6 +150,15 @@ rpl::producer<QString> ChatEnhancedSection::title() {
 
 bool ChatEnhancedSection::centerLayerVertically() const {
 	return true;
+}
+
+void ChatEnhancedSection::showFinished() {
+	for (const auto &[id, widget] : _highlightControls) {
+		if (widget) {
+			controller()->checkHighlightControl(id, widget);
+		}
+	}
+	AbstractSection::showFinished();
 }
 
 base::unique_qptr<Ui::RpWidget> ChatEnhancedSection::createTopBarButton(
@@ -398,7 +413,54 @@ void ShowOverrideBox(
 	}));
 }
 
-void AddFeature(
+QString FeatureControlId(Feature feature) {
+	return EnhancedSettings::ControlId(
+		EnhancedSettings::OptionForChatFeature(feature));
+}
+
+void SetupFeatureMenu(
+		not_null<Window::SessionController*> controller,
+		not_null<Ui::RpWidget*> widget,
+		not_null<PeerData*> peer,
+		Feature feature) {
+	const auto link = EnhancedSettings::DeepLink(
+		EnhancedSettings::OptionForChatFeature(feature))
+		+ u"?chat="_q + EnhancedSettings::ChatPeerIdForLink(peer->id);
+	const auto menu = widget->lifetime(
+	).make_state<base::unique_qptr<Ui::PopupMenu>>();
+	widget->events(
+	) | rpl::filter([](not_null<QEvent*> e) {
+		return e->type() == QEvent::ContextMenu;
+	}) | rpl::on_next([=](not_null<QEvent*> e) {
+		*menu = base::make_unique_q<Ui::PopupMenu>(
+			widget,
+			st::popupMenuWithIcons);
+		const auto copy = [=](QString value) {
+			TextUtilities::SetClipboardText({ std::move(value) });
+			controller->showToast({
+				.text = { tr::lng_username_copied(tr::now) },
+				.iconLottie = u"toast/voip_invite"_q,
+				.iconLottieSize = st::toastLottieIconSize,
+			});
+		};
+		(*menu)->addAction(
+			tr::lng_auction_menu_copy_link(tr::now),
+			[=] { copy(link); },
+			&st::menuIconCopy);
+		(*menu)->addAction(
+			tr::lng_settings_share_current_setting(tr::now),
+			[=] {
+				copy(link + u"&value="_q
+					+ EnhancedSettings::ChatFeatureOverrideValue(
+						EnhancedSettings::GetChatFeatureOverride(peer, feature)));
+			},
+			&st::menuIconCopy);
+		(*menu)->popup(QCursor::pos());
+		e->accept();
+	}, widget->lifetime());
+}
+
+not_null<Ui::RpWidget*> AddFeature(
 		not_null<Window::SessionController*> controller,
 		not_null<Ui::VerticalLayout*> container,
 		not_null<PeerData*> peer,
@@ -413,6 +475,8 @@ void AddFeature(
 	button->addClickHandler([=] {
 		ShowOverrideBox(controller, peer, descriptor, value);
 	});
+	SetupFeatureMenu(controller, button, peer, descriptor.feature);
+	return button;
 }
 
 void ChatEnhancedSection::setupContent() {
@@ -476,12 +540,15 @@ void ChatEnhancedSection::setupContent() {
 					EnhancedSettings::GetChatFeatureOverride(
 						_peer,
 						descriptor.feature));
-				AddFeature(
+				const auto button = AddFeature(
 					controller(),
 					inner,
 					_peer,
 					descriptor,
 					value);
+				_highlightControls.emplace_back(
+					FeatureControlId(descriptor.feature),
+					button.get());
 			}
 		}
 		Ui::AddSkip(content);
@@ -504,8 +571,21 @@ bool HasChatEnhancedSettings(not_null<PeerData*> peer) {
 
 void ShowChatEnhancedSettings(
 		not_null<Window::SessionController*> controller,
-		not_null<PeerData*> peer) {
+		not_null<PeerData*> peer,
+		std::optional<Feature> feature) {
+	if (feature) {
+		controller->setHighlightControlId(FeatureControlId(*feature));
+	}
 	controller->showSettings(std::make_shared<ChatEnhancedFactory>(peer));
+}
+
+bool HasChatEnhancedFeature(not_null<PeerData*> peer, Feature feature) {
+	for (const auto &descriptor : kFeatureDescriptors) {
+		if (descriptor.feature == feature) {
+			return IsAvailable(peer, descriptor);
+		}
+	}
+	return false;
 }
 
 } // namespace Settings

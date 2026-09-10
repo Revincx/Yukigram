@@ -6,6 +6,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #pragma once
 
+#include "core/chat_enhanced_settings.h"
+
 class PeerData;
 
 namespace Window {
@@ -15,8 +17,12 @@ class SessionController;
 namespace Settings {
 
 [[nodiscard]] bool HasChatEnhancedSettings(not_null<PeerData*> peer);
+[[nodiscard]] bool HasChatEnhancedFeature(
+	not_null<PeerData*> peer,
+	EnhancedSettings::ChatFeature feature);
 void ShowChatEnhancedSettings(
 	not_null<Window::SessionController*> controller,
-	not_null<PeerData*> peer);
+	not_null<PeerData*> peer,
+	std::optional<EnhancedSettings::ChatFeature> feature = std::nullopt);
 
 } // namespace Settings

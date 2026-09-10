@@ -165,6 +165,9 @@ Result Router::executeAction(const Action &action, const Context &ctx) {
 		if (!ctx.controller) {
 			return Result::NeedsAuth;
 		}
+		if (ctx.params.contains(u"chat"_q)) {
+			return s.chatHandler ? s.chatHandler(ctx) : Result::Unsupported;
+		}
 		const auto highlight = ctx.params.value(u"highlight"_q);
 		if (!highlight.isEmpty()) {
 			ctx.controller->setHighlightControlId(highlight);
@@ -174,6 +177,9 @@ Result Router::executeAction(const Action &action, const Context &ctx) {
 	}, [&](const SettingsControl &s) {
 		if (!ctx.controller) {
 			return Result::NeedsAuth;
+		}
+		if (ctx.params.contains(u"chat"_q)) {
+			return s.chatHandler ? s.chatHandler(ctx) : Result::Unsupported;
 		}
 		if (ctx.params.contains(u"value"_q)) {
 			return s.valueHandler

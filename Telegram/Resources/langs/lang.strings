@@ -8804,6 +8804,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_chat_enhanced_reset" = "Reset to Default";
 "lng_chat_enhanced_reset_sure" = "Reset all enhanced settings for this chat to default?";
 "lng_chat_enhanced_reset_done" = "Enhanced settings for this chat were reset.";
+"lng_chat_enhanced_apply_shared_value" = "Import this enhanced setting for {chat}?\n\n{option}: {value}";
 "lng_settings_show_message_id" = "Show message ID";
 "lng_settings_force_show_webpage_preview" = "Force show webpage preview";
 "lng_settings_disable_auto_fetch_webpage_preview" = "Disable auto fetch webpage preview";

@@ -27,8 +27,12 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/widgets/buttons.h"
 #include "boxes/username_box.h"
 #include "core/application.h"
+#include "core/chat_enhanced_settings.h"
 #include "core/click_handler_types.h"
 #include "core/enhanced_settings.h"
+#include "data/data_channel.h"
+#include "data/data_chat.h"
+#include "data/data_session.h"
 #include "data/data_user.h"
 #include "data/notify/data_notify_settings.h"
 #include "info/info_memento.h"
@@ -48,6 +52,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "settings/sections/settings_business.h"
 #include "settings/sections/settings_calls.h"
 #include "settings/sections/settings_chat.h"
+#include "settings/sections/settings_chat_enhanced.h"
 #include "settings/sections/settings_enhanced.h"
 #include "settings/sections/settings_passkeys.h"
 #include "data/components/passkeys.h"
@@ -84,6 +89,121 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 namespace Core::DeepLinks {
 namespace {
 
+bool ChatEnhancedAccessible(PeerData *peer) {
+	if (!peer || !peer->isLoaded()) {
+		return false;
+	} else if (const auto user = peer->asUser()) {
+		return !user->isInaccessible();
+	} else if (const auto chat = peer->asChat()) {
+		return chat->amIn();
+	} else if (const auto channel = peer->asChannel()) {
+		return !channel->isForbidden()
+			&& !channel->isCommunity()
+			&& (channel->amIn() || channel->hasUsername());
+	}
+	return false;
+}
+
+QString ChatOverrideLabel(EnhancedSettings::ChatFeatureOverride value) {
+	switch (value) {
+	case EnhancedSettings::ChatFeatureOverride::Default:
+		return tr::lng_chat_enhanced_default(tr::now);
+	case EnhancedSettings::ChatFeatureOverride::Enabled:
+		return tr::lng_chat_enhanced_enabled(tr::now);
+	case EnhancedSettings::ChatFeatureOverride::Disabled:
+		return tr::lng_chat_enhanced_disabled(tr::now);
+	}
+	Unexpected("Unknown ChatFeatureOverride.");
+}
+
+void ShowChatEnhancedValue(
+		not_null<Window::SessionController*> controller,
+		not_null<PeerData*> peer,
+		EnhancedSettings::ChatFeature feature,
+		EnhancedSettings::ChatFeatureOverride value) {
+	controller->show(Box([=](not_null<Ui::GenericBox*> box) {
+		Ui::ConfirmBox(box, Ui::ConfirmBoxArgs{
+			.text = tr::lng_chat_enhanced_apply_shared_value(
+				tr::now,
+				lt_chat,
+				tr::bold(peer->name()),
+				lt_option,
+				tr::bold(EnhancedSettings::OptionTitle(
+					EnhancedSettings::OptionForChatFeature(feature))),
+				lt_value,
+				tr::bold(ChatOverrideLabel(value)),
+				tr::rich),
+			.confirmed = crl::guard(controller, [=](Fn<void()> close) {
+				if (!ChatEnhancedAccessible(peer)
+					|| !::Settings::HasChatEnhancedFeature(peer, feature)) {
+					close();
+					controller->showToast(
+						tr::lng_filters_link_inaccessible(tr::now));
+					return;
+				}
+				EnhancedSettings::SetChatFeatureOverride(peer, feature, value);
+				close();
+				::Settings::ShowChatEnhancedSettings(controller, peer, feature);
+				controller->showToast({
+					.text = tr::lng_settings_shared_value_applied(tr::now),
+					.iconLottie = u"toast/contact_check"_q,
+					.iconLottieSize = st::toastLottieIconSize,
+				});
+			}),
+			.confirmText = tr::lng_settings_apply(),
+			.title = tr::lng_settings_apply_shared_value_title(),
+		});
+	}));
+}
+
+Result HandleChatEnhanced(
+		const Context &ctx,
+		std::optional<EnhancedSettings::OptionId> id = std::nullopt) {
+	if (!ctx.controller) {
+		return Result::NeedsAuth;
+	}
+	const auto controller = ctx.controller;
+	const auto peerId = EnhancedSettings::ChatPeerIdFromLink(
+		ctx.params.value(u"chat"_q));
+	const auto loaded = peerId
+		? controller->session().data().peerLoaded(peerId)
+		: nullptr;
+	const auto peer = loaded ? loaded->migrateToOrMe().get() : nullptr;
+	if (!ChatEnhancedAccessible(peer)) {
+		controller->showToast(tr::lng_filters_link_inaccessible(tr::now));
+		return Result::Handled;
+	}
+	if (!id) {
+		if (ctx.path.toLower() != u"enhanced"_q) {
+			return Result::Unsupported;
+		}
+		const auto highlight = ctx.params.value(u"highlight"_q);
+		if (!highlight.isEmpty()) {
+			id = EnhancedSettings::OptionByControlId(highlight);
+			if (!id) {
+				return Result::Unsupported;
+			}
+		}
+	}
+	const auto feature = id
+		? EnhancedSettings::ChatFeatureForOption(*id)
+		: std::nullopt;
+	if (id && (!feature || !::Settings::HasChatEnhancedFeature(peer, *feature))) {
+		return Result::Unsupported;
+	}
+	if (!ctx.params.contains(u"value"_q)) {
+		::Settings::ShowChatEnhancedSettings(controller, peer, feature);
+		return Result::Handled;
+	}
+	const auto value = EnhancedSettings::ParseChatFeatureOverride(
+		ctx.params.value(u"value"_q));
+	if (!feature || !value || ctx.params.contains(u"encoding"_q)) {
+		return Result::Unsupported;
+	}
+	ShowChatEnhancedValue(controller, peer, *feature, *value);
+	return Result::Handled;
+}
+
 Result HandleEnhancedValue(
 		const Context &ctx,
 		EnhancedSettings::OptionId id) {
@@ -102,7 +222,8 @@ Result HandleEnhancedValue(
 			.text = tr::lng_settings_apply_shared_value(
 				tr::now,
 				lt_option,
-				optionTitle),
+				tr::bold(optionTitle),
+				tr::rich),
 			.confirmed = [=](Fn<void()> close) {
 				const auto changed = EnhancedSettings::ApplyOption(
 					controller,
@@ -1816,7 +1937,10 @@ void RegisterSettingsHandlers(Router &router) {
 
 	router.add(u"settings"_q, {
 		.path = u"enhanced"_q,
-		.action = SettingsSection{ ::Settings::EnhancedId() },
+		.action = SettingsSection{
+			::Settings::EnhancedId(),
+			[](const Context &ctx) { return HandleChatEnhanced(ctx); },
+		},
 	});
 
 	for (const auto &descriptor : EnhancedSettings::Descriptors()) {
@@ -1831,6 +1955,9 @@ void RegisterSettingsHandlers(Router &router) {
 				controlId,
 				[id = descriptor.id](const Context &ctx) {
 					return HandleEnhancedValue(ctx, id);
+				},
+				[id = descriptor.id](const Context &ctx) {
+					return HandleChatEnhanced(ctx, id);
 				},
 			},
 		});
