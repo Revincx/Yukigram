@@ -424,6 +424,7 @@ void SetupFeatureMenu(
 		not_null<PeerData*> peer,
 		Feature feature) {
 	const auto link = EnhancedSettings::DeepLink(
+		&controller->session(),
 		EnhancedSettings::OptionForChatFeature(feature))
 		+ u"?chat="_q + EnhancedSettings::ChatPeerIdForLink(peer->id);
 	const auto menu = widget->lifetime(

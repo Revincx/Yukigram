@@ -6,6 +6,7 @@ https://github.com/TDesktop-x64/tdesktop/blob/dev/LEGAL
 */
 #pragma once
 
+#include "base/const_string.h"
 #include "base/flags.h"
 #include "core/link_preview_rules.h"
 #include "rpl/producer.h"
@@ -24,12 +25,18 @@ namespace Window {
 class SessionController;
 } // namespace Window
 
+namespace Main {
+class Session;
+} // namespace Main
+
 namespace tr {
 template <typename... Tags>
 struct phrase;
 } // namespace tr
 
 namespace EnhancedSettings {
+
+inline constexpr auto kEnhancedSettingsRouteChannel = "yurisettings"_cs;
 
 enum class OptionId {
 	ShowMessagesId,
@@ -266,8 +273,12 @@ template <typename Value>
 [[nodiscard]] IntegerConstraint IntegerConstraintFor(Key<int> key);
 [[nodiscard]] bool HasExtraContextMenuOption(ExtraContextMenuOption value);
 
-[[nodiscard]] QString DeepLink(OptionId id);
-[[nodiscard]] QString DeepLinkWithCurrentValue(OptionId id);
+[[nodiscard]] QString DeepLink(
+	not_null<Main::Session*> session,
+	OptionId id);
+[[nodiscard]] QString DeepLinkWithCurrentValue(
+	not_null<Main::Session*> session,
+	OptionId id);
 [[nodiscard]] QString Serialize();
 [[nodiscard]] bool Deserialize(const QString &json);
 [[nodiscard]] std::optional<PendingValue> ParseSharedValue(

@@ -797,13 +797,22 @@ bool HasExtraContextMenuOption(ExtraContextMenuOption value) {
 	return Get(Option::ExtraContextMenuOptions).contains(int(value));
 }
 
-QString DeepLink(OptionId id) {
+QString DeepLink(not_null<Main::Session*> session, OptionId id) {
 	const auto controlId = ControlId(id);
-	return controlId.isEmpty() ? QString() : u"tg://settings/"_q + controlId;
+	const auto prefix = u"enhanced/"_q;
+	if (controlId.isEmpty()) {
+		return {};
+	}
+	Expects(controlId.startsWith(prefix));
+	return session->createInternalLinkFull(
+		u"%1/"_q.arg(kEnhancedSettingsRouteChannel.utf16())
+			+ controlId.mid(prefix.size()));
 }
 
-QString DeepLinkWithCurrentValue(OptionId id) {
-	const auto link = DeepLink(id);
+QString DeepLinkWithCurrentValue(
+		not_null<Main::Session*> session,
+		OptionId id) {
+	const auto link = DeepLink(session, id);
 	if (link.isEmpty()) {
 		return {};
 	}

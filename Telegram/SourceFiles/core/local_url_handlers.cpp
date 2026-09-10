@@ -14,6 +14,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_premium.h"
 #include "base/qthelp_regex.h"
 #include "base/qthelp_url.h"
+#include "core/enhanced_settings.h"
 #include "lang/lang_cloud_manager.h"
 #include "lang/lang_keys.h"
 #include "core/update_checker.h"
@@ -2048,6 +2049,14 @@ QString TryConvertUrlToLocal(QString url) {
 			return u"tg://addstyle?slug="_q + url_encode(addStyleMatch->captured(1));
 		} else if (const auto languageMatch = regex_match(u"^setlanguage/([a-zA-Z0-9\\.\\_\\-]+)(\\?|$)"_q, query, matchOptions)) {
 			return u"tg://setlanguage?lang="_q + url_encode(languageMatch->captured(1));
+		} else if (const auto enhancedSettingsMatch = regex_match(
+				u"^%1(/[^?#]*)?(\\?[^#]*)?(?:#.*)?$"_q.arg(
+					EnhancedSettings::kEnhancedSettingsRouteChannel.utf16()),
+				query,
+				matchOptions)) {
+			return u"tg://settings/enhanced"_q
+				+ enhancedSettingsMatch->captured(1)
+				+ enhancedSettingsMatch->captured(2);
 		} else if (const auto shareUrlMatch = regex_match(u"^share/url/?\\?(.+)$"_q, query, matchOptions)) {
 			return u"tg://msg_url?"_q + shareUrlMatch->captured(1);
 		} else if (const auto confirmPhoneMatch = regex_match(u"^confirmphone/?\\?(.+)"_q, query, matchOptions)) {

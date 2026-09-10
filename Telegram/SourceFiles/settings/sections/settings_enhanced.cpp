@@ -1022,7 +1022,15 @@ struct DecodeEnhancedSettingsResult {
 			not_null<Ui::RpWidget*> widget) {
 		_highlightControls.emplace_back(id, widget.get());
 
-		const auto link = u"tg://settings/"_q + id;
+		const auto prefix = u"enhanced/"_q;
+		Expects(id.startsWith(prefix));
+		const auto session = &controller()->session();
+		const auto link = option
+			? EnhancedSettings::DeepLink(session, *option)
+			: session->createInternalLinkFull(
+				u"%1/"_q.arg(
+					EnhancedSettings::kEnhancedSettingsRouteChannel.utf16())
+					+ id.mid(prefix.size()));
 		const auto menu = widget->lifetime(
 		).make_state<base::unique_qptr<Ui::PopupMenu>>();
 		widget->events(
@@ -1048,7 +1056,9 @@ struct DecodeEnhancedSettingsResult {
 				(*menu)->addAction(
 					tr::lng_settings_share_current_setting(tr::now),
 					[=] {
-						copy(EnhancedSettings::DeepLinkWithCurrentValue(*option));
+						copy(EnhancedSettings::DeepLinkWithCurrentValue(
+							session,
+							*option));
 					},
 					&st::menuIconCopy);
 			}
