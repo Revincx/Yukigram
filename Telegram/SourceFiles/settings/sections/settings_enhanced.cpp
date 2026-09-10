@@ -843,7 +843,7 @@ struct DecodeEnhancedSettingsResult {
 		const auto showEmojiButtonAsText = AddButtonWithIcon(
 				content,
 				tr::lng_settings_show_emoji_button_as_text(),
-				st::settingsButtonNoIcon
+				st::settingsAttentionButton
 		);
 		registerHighlight(
 			EnhancedSettings::Option::ShowEmojiButtonAsText,
@@ -964,7 +964,7 @@ struct DecodeEnhancedSettingsResult {
 		const auto forceMobile = AddButtonWithIcon(
 				content,
 				tr::lng_settings_force_mobile(),
-				st::settingsButtonNoIcon
+				st::settingsAttentionButton
 		);
 		registerHighlight(
 			EnhancedSettings::Option::ForceMobile,
