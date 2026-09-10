@@ -1021,6 +1021,8 @@ sh rustup-init.sh -y --no-modify-path --profile minimal --default-toolchain $RUS
 rm rustup-init.sh
 export RUSTUP_TOOLCHAIN=$RUST_TOOLCHAIN
 export PATH=$CARGO_HOME/bin:$PATH
+RUST_TARGET=$(rustc -vV | sed -n 's/^host: //p')
+test -n "$RUST_TARGET"
 export DESTDIR=/usr/src/tlottie-cache
 git init tlottie
 cd tlottie
@@ -1029,10 +1031,10 @@ git fetch --depth=1 origin 8ca87fc25a6ae5cbea4237feb5bae37940f37ae4
 git reset --hard FETCH_HEAD
 cargo rustc --lib --release --locked \
 	--features c-api --crate-type staticlib \
-	--target x86_64-unknown-linux-gnu \
+	--target $RUST_TARGET \
 	-- --print native-static-libs
 mkdir -p $DESTDIR/usr/local/lib $DESTDIR/usr/local/include/tlottie
-objcopy --strip-debug target/x86_64-unknown-linux-gnu/release/libtlottie.a $DESTDIR/usr/local/lib/libtlottie.a
+objcopy --strip-debug target/$RUST_TARGET/release/libtlottie.a $DESTDIR/usr/local/lib/libtlottie.a
 cp include/tlottie.h $DESTDIR/usr/local/include/tlottie/tlottie.h
 cd ..
 rm -rf tlottie rustup cargo
