@@ -263,6 +263,8 @@ template <typename Value>
 
 [[nodiscard]] QString DeepLink(OptionId id);
 [[nodiscard]] QString DeepLinkWithCurrentValue(OptionId id);
+[[nodiscard]] QString Serialize();
+[[nodiscard]] bool Deserialize(const QString &json);
 [[nodiscard]] std::optional<PendingValue> ParseSharedValue(
 	OptionId id,
 	const QMap<QString, QString> &params);

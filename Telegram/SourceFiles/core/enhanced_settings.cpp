@@ -487,6 +487,59 @@ public:
 		return _changes.events();
 	}
 
+	QString serialize() const {
+		return QString::fromUtf8(QJsonDocument(
+			SerializeValues(_values)
+		).toJson(QJsonDocument::Compact));
+	}
+
+	bool deserialize(const QString &json) {
+		auto error = QJsonParseError();
+		const auto document = QJsonDocument::fromJson(json.toUtf8(), &error);
+		if (error.error != QJsonParseError::NoError) {
+			LOG(("Enhanced Settings: Error parsing import json: %1 (%2)"
+				).arg(error.error
+				).arg(error.errorString()));
+			return false;
+		} else if (!document.isObject()) {
+			LOG(("Enhanced Settings: Imported json is not an object."));
+			return false;
+		}
+
+		auto imported = DefaultValues();
+		const auto object = document.object();
+		for (auto i = object.begin(); i != object.end(); ++i) {
+			const auto found = std::find_if(
+				DescriptorData().begin(),
+				DescriptorData().end(),
+				[&](const Descriptor &descriptor) {
+					return FromUtf8(descriptor.storageKey) == i.key();
+				});
+			if (found == DescriptorData().end()) {
+				LOG(("Enhanced Settings: Unknown option "
+					"'%1' in import.").arg(i.key()));
+				continue;
+			}
+			auto value = DeserializeValue(*found, i.value(), true);
+			if (!value) {
+				LOG(("Enhanced Settings: Wrong option value "
+					"for '%1' in import.").arg(i.key()));
+				return false;
+			}
+			imported[Index(found->id)] = std::move(*value);
+		}
+
+		_writeTimer.stop();
+		for (auto i = size_t(); i != kOptionCount; ++i) {
+			if (_values[i] != imported[i]) {
+				_values[i] = std::move(imported[i]);
+				_changes.fire(static_cast<OptionId>(i));
+			}
+		}
+		writeCurrentSettings();
+		return true;
+	}
+
 	void reset() {
 		_writeTimer.stop();
 		const auto defaults = DefaultValues();
@@ -769,6 +822,14 @@ QString DeepLinkWithCurrentValue(OptionId id) {
 		QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals);
 	return link + u"?value="_q + QString::fromLatin1(encoded)
 		+ u"&encoding=base64"_q;
+}
+
+QString Serialize() {
+	return EnsureData().serialize();
+}
+
+bool Deserialize(const QString &json) {
+	return EnsureData().deserialize(json);
 }
 
 std::optional<PendingValue> ParseSharedValue(

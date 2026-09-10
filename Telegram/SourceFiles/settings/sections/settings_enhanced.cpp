@@ -9,6 +9,7 @@ https://github.com/TDesktop-x64/tdesktop/blob/dev/LEGAL
 #include <mainwindow.h>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QtGui/QGuiApplication>
 #include "settings/sections/settings_enhanced.h"
 
 #include "settings/settings_common.h"
@@ -22,6 +23,7 @@ https://github.com/TDesktop-x64/tdesktop/blob/dev/LEGAL
 #include "ui/widgets/labels.h"
 #include "ui/widgets/checkbox.h"
 #include "ui/widgets/continuous_sliders.h"
+#include "ui/widgets/menu/menu_add_action_callback.h"
 #include "ui/widgets/popup_menu.h"
 #include "ui/text/text_entity.h"
 #include "ui/text/text_utilities.h" // Ui::Text::ToUpper
@@ -32,6 +34,7 @@ https://github.com/TDesktop-x64/tdesktop/blob/dev/LEGAL
 #include "boxes/about_box.h"
 #include "ui/boxes/confirm_box.h"
 #include "platform/platform_specific.h"
+#include "window/window_controller.h"
 #include "window/window_session_controller.h"
 #include "lang/lang_keys.h"
 #include "lang/lang_instance.h"
@@ -56,6 +59,51 @@ https://github.com/TDesktop-x64/tdesktop/blob/dev/LEGAL
 namespace Settings {
 
 namespace {
+
+const auto kEnhancedSettingsClipboardPrefix
+	= u"yurigram-settings:"_q;
+
+struct DecodeEnhancedSettingsResult {
+	bool ok = false;
+	QString json;
+};
+
+[[nodiscard]] QString EncodeEnhancedSettingsToText(const QString &json) {
+	const auto flags = QByteArray::Base64UrlEncoding
+		| QByteArray::OmitTrailingEquals;
+	return kEnhancedSettingsClipboardPrefix
+		+ qs(qCompress(json.toUtf8(), 9).toBase64(flags));
+}
+
+[[nodiscard]] DecodeEnhancedSettingsResult DecodeEnhancedSettingsFromText(
+		const QString &text) {
+	auto result = DecodeEnhancedSettingsResult();
+	if (!text.startsWith(kEnhancedSettingsClipboardPrefix)) {
+		return result;
+	}
+	auto encoded = QStringView(text).mid(
+		kEnhancedSettingsClipboardPrefix.size()).toLatin1();
+	const auto compressed = QByteArray::fromBase64Encoding(
+		std::move(encoded),
+		QByteArray::Base64UrlEncoding
+			| QByteArray::AbortOnBase64DecodingErrors);
+	if (!compressed || (*compressed).isEmpty()) {
+		return result;
+	}
+	const auto decoded = qUncompress(*compressed);
+	if (decoded.isEmpty()) {
+		return result;
+	}
+
+	auto error = QJsonParseError();
+	const auto parsed = QJsonDocument::fromJson(decoded, &error);
+	if (error.error != QJsonParseError::NoError || !parsed.isObject()) {
+		return result;
+	}
+	result.ok = true;
+	result.json = QString::fromUtf8(decoded);
+	return result;
+}
 
 [[nodiscard]] EnhancedSettings::IntegerConstraint StickerHeightConstraint() {
 	return EnhancedSettings::IntegerConstraintFor(
@@ -560,7 +608,7 @@ namespace {
 			EnhancedSettings::Option::ShowMessagesId,
 			showMessageId);
 		showMessageId->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::ShowMessagesId))
+				EnhancedSettings::Watch(EnhancedSettings::Option::ShowMessagesId)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::ShowMessagesId));
@@ -576,7 +624,7 @@ namespace {
 			EnhancedSettings::Option::ForceShowWebPagePreview,
 			forceShowWebPagePreview);
 		forceShowWebPagePreview->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::ForceShowWebPagePreview))
+				EnhancedSettings::Watch(EnhancedSettings::Option::ForceShowWebPagePreview)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return (toggled
@@ -593,7 +641,7 @@ namespace {
 			EnhancedSettings::Option::DisableAutoFetchWebPagePreview,
 			disableAutoFetchWebPagePreview);
 		disableAutoFetchWebPagePreview->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::DisableAutoFetchWebPagePreview))
+				EnhancedSettings::Watch(EnhancedSettings::Option::DisableAutoFetchWebPagePreview)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::DisableAutoFetchWebPagePreview));
@@ -610,7 +658,7 @@ namespace {
 			EnhancedSettings::Option::RemoveMediaSpoiler,
 			removeMediaSpoiler);
 		removeMediaSpoiler->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::RemoveMediaSpoiler))
+				EnhancedSettings::Watch(EnhancedSettings::Option::RemoveMediaSpoiler)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::RemoveMediaSpoiler));
@@ -626,7 +674,7 @@ namespace {
 			EnhancedSettings::Option::ShowMediaMetadata,
 			showMediaMetadata);
 		showMediaMetadata->toggleOn(
-			rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::ShowMediaMetadata))
+			EnhancedSettings::Watch(EnhancedSettings::Option::ShowMediaMetadata)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return toggled != EnhancedSettings::Get(EnhancedSettings::Option::ShowMediaMetadata);
@@ -643,7 +691,7 @@ namespace {
 			EnhancedSettings::Option::HideBlockedMessages,
 			hideBlockedMessages);
 		hideBlockedMessages->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::HideBlockedMessages))
+				EnhancedSettings::Watch(EnhancedSettings::Option::HideBlockedMessages)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::HideBlockedMessages));
@@ -653,10 +701,9 @@ namespace {
 
 		auto richMessagePreviewBlocksValue = rpl::combine(
 			tr::lng_font_default(),
-			_RichMessagePreviewBlocksChanged.events_starting_with({})
-		) | rpl::map([](QString defaultLabel, auto) {
-			const auto limit
-				= EnhancedSettings::Get(EnhancedSettings::Option::RichMessagePreviewBlocksLimit);
+			EnhancedSettings::Watch(
+				EnhancedSettings::Option::RichMessagePreviewBlocksLimit)
+		) | rpl::map([](QString defaultLabel, int limit) {
 			return limit ? QString::number(limit) : std::move(defaultLabel);
 		});
 		const auto richMessagePreviewBlocks = AddButtonWithLabel(
@@ -667,12 +714,6 @@ namespace {
 		registerHighlight(
 			EnhancedSettings::Option::RichMessagePreviewBlocksLimit,
 			richMessagePreviewBlocks);
-		richMessagePreviewBlocks->events(
-		) | rpl::on_next([=](not_null<QEvent*> e) {
-			if (e->type() == QEvent::UpdateLater) {
-				_RichMessagePreviewBlocksChanged.fire({});
-			}
-		}, content->lifetime());
 		richMessagePreviewBlocks->addClickHandler([=] {
 			Ui::show(Box<RichMessagePreviewBlocksBox>());
 		});
@@ -688,7 +729,7 @@ namespace {
 			EnhancedSettings::Option::DisablePremiumAnimation,
 			disablePremiumAnimation);
 		disablePremiumAnimation->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::DisablePremiumAnimation))
+				EnhancedSettings::Watch(EnhancedSettings::Option::DisablePremiumAnimation)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::DisablePremiumAnimation));
@@ -705,7 +746,7 @@ namespace {
 			EnhancedSettings::Option::ShowGroupSenderAvatar,
 			showGroupSenderAvatar);
 		showGroupSenderAvatar->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::ShowGroupSenderAvatar))
+				EnhancedSettings::Watch(EnhancedSettings::Option::ShowGroupSenderAvatar)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::ShowGroupSenderAvatar));
@@ -740,7 +781,7 @@ namespace {
 			EnhancedSettings::Option::ShowSeconds,
 			showSeconds);
 		showSeconds->toggleOn(
-			rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::ShowSeconds))
+			EnhancedSettings::Watch(EnhancedSettings::Option::ShowSeconds)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::ShowSeconds));
@@ -787,6 +828,17 @@ namespace {
 			[=](int index) {
 				saveStickerHeight(StickerHeightForIndex(index));
 			});
+		EnhancedSettings::Changes(
+			EnhancedSettings::Option::StickerHeight
+		) | rpl::on_next([=] {
+			const auto stored = EnhancedSettings::Get(
+				EnhancedSettings::Option::StickerHeight);
+			const auto height = stored ? stored : stickerConstraint.maximum;
+			const auto sections = stickerConstraint.maximum
+				- stickerConstraint.minimum;
+			slider->setValue(StickerHeightIndexForHeight(height) / float64(sections));
+			stickerHeightLabel->fire(StickerHeightLabel(height));
+		}, content->lifetime());
 
 		const auto showEmojiButtonAsText = AddButtonWithIcon(
 				content,
@@ -797,7 +849,7 @@ namespace {
 			EnhancedSettings::Option::ShowEmojiButtonAsText,
 			showEmojiButtonAsText);
 		showEmojiButtonAsText->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::ShowEmojiButtonAsText))
+				EnhancedSettings::Watch(EnhancedSettings::Option::ShowEmojiButtonAsText)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::ShowEmojiButtonAsText));
@@ -816,7 +868,7 @@ namespace {
 			EnhancedSettings::Option::ShowScheduledButton,
 			showScheduledButton);
 		showScheduledButton->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::ShowScheduledButton))
+				EnhancedSettings::Watch(EnhancedSettings::Option::ShowScheduledButton)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::ShowScheduledButton));
@@ -833,7 +885,7 @@ namespace {
 			EnhancedSettings::Option::ShowPeerId,
 			showPeerId);
 		showPeerId->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::ShowPeerId))
+				EnhancedSettings::Watch(EnhancedSettings::Option::ShowPeerId)
 		)->toggledValue(
 		) | rpl::filter([](bool enabled) {
 			return (enabled != EnhancedSettings::Get(EnhancedSettings::Option::ShowPeerId));
@@ -850,7 +902,7 @@ namespace {
 			EnhancedSettings::Option::HideAllChats,
 			hideAllChats);
 		hideAllChats->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::HideAllChats))
+				EnhancedSettings::Watch(EnhancedSettings::Option::HideAllChats)
 		)->toggledValue(
 		) | rpl::filter([](bool enabled) {
 			return (enabled != EnhancedSettings::Get(EnhancedSettings::Option::HideAllChats));
@@ -867,7 +919,7 @@ namespace {
 			EnhancedSettings::Option::HideCounter,
 			hideCounter);
 		hideCounter->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::HideCounter))
+				EnhancedSettings::Watch(EnhancedSettings::Option::HideCounter)
 		)->toggledValue(
 		) | rpl::filter([](bool enabled) {
 			return (enabled != EnhancedSettings::Get(EnhancedSettings::Option::HideCounter));
@@ -884,7 +936,7 @@ namespace {
 			EnhancedSettings::Option::HideStories,
 			hideStories);
 		hideStories->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::HideStories))
+				EnhancedSettings::Watch(EnhancedSettings::Option::HideStories)
 		)->toggledValue(
 		) | rpl::filter([](bool enabled) {
 			return (enabled != EnhancedSettings::Get(EnhancedSettings::Option::HideStories));
@@ -901,7 +953,7 @@ namespace {
 			EnhancedSettings::Option::HideStarRatings,
 			hideStarRatings);
 		hideStarRatings->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::HideStarRatings))
+				EnhancedSettings::Watch(EnhancedSettings::Option::HideStarRatings)
 		)->toggledValue(
 		) | rpl::filter([](bool enabled) {
 			return (enabled != EnhancedSettings::Get(EnhancedSettings::Option::HideStarRatings));
@@ -918,7 +970,7 @@ namespace {
 			EnhancedSettings::Option::ForceMobile,
 			forceMobile);
 		forceMobile->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::ForceMobile))
+				EnhancedSettings::Watch(EnhancedSettings::Option::ForceMobile)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::ForceMobile));
@@ -934,7 +986,7 @@ namespace {
 			EnhancedSettings::Option::HideDeleteForOthersCheckbox,
 			hideDeleteForOthersCheckbox);
 		hideDeleteForOthersCheckbox->toggleOn(
-			rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::HideDeleteForOthersCheckbox))
+			EnhancedSettings::Watch(EnhancedSettings::Option::HideDeleteForOthersCheckbox)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return toggled
@@ -955,7 +1007,7 @@ namespace {
 			EnhancedSettings::Option::ShowSimilarOnJoined,
 			showSimilarOnJoined);
 		showSimilarOnJoined->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::ShowSimilarOnJoined))
+				EnhancedSettings::Watch(EnhancedSettings::Option::ShowSimilarOnJoined)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::ShowSimilarOnJoined));
@@ -972,7 +1024,7 @@ namespace {
 			EnhancedSettings::Option::MoreRightActionComments,
 			moreRightActionComments);
 		moreRightActionComments->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::MoreRightActionComments))
+				EnhancedSettings::Watch(EnhancedSettings::Option::MoreRightActionComments)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::MoreRightActionComments));
@@ -988,7 +1040,7 @@ namespace {
 			EnhancedSettings::Option::SendCommentAfterForwarding,
 			sendCommentAfterForwarding);
 		sendCommentAfterForwarding->toggleOn(
-			rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::SendCommentAfterForwarding))
+			EnhancedSettings::Watch(EnhancedSettings::Option::SendCommentAfterForwarding)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return toggled
@@ -1006,7 +1058,7 @@ namespace {
 			EnhancedSettings::Option::DisableCloudDraftSync,
 			disableCloudDraftSync);
 		disableCloudDraftSync->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::DisableCloudDraftSync))
+				EnhancedSettings::Watch(EnhancedSettings::Option::DisableCloudDraftSync)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::DisableCloudDraftSync));
@@ -1022,7 +1074,7 @@ namespace {
 			EnhancedSettings::Option::DisableSyncDraftToCloud,
 			disableSyncDraftToCloud);
 		disableSyncDraftToCloud->toggleOn(
-			rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::DisableSyncDraftToCloud))
+			EnhancedSettings::Watch(EnhancedSettings::Option::DisableSyncDraftToCloud)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return toggled
@@ -1040,7 +1092,7 @@ namespace {
 			EnhancedSettings::Option::DisableLinkWarning,
 			disableLinkWarning);
 		disableLinkWarning->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::DisableLinkWarning))
+				EnhancedSettings::Watch(EnhancedSettings::Option::DisableLinkWarning)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::DisableLinkWarning));
@@ -1057,7 +1109,7 @@ namespace {
 			EnhancedSettings::Option::DisableGlobalSearch,
 			disableGlobalSearch);
 		disableGlobalSearch->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::DisableGlobalSearch))
+				EnhancedSettings::Watch(EnhancedSettings::Option::DisableGlobalSearch)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::DisableGlobalSearch));
@@ -1082,17 +1134,13 @@ namespace {
 				content,
 				object_ptr<Ui::VerticalLayout>(content)));
 		const auto repeaterContent = repeaterSubWrap->entity();
-		repeaterSubWrap->toggle(
-			EnhancedSettings::HasExtraContextMenuOption(EnhancedSettings::ExtraContextMenuOption::Repeater),
-			anim::type::instant);
-		extraContextMenu->events(
-		) | rpl::on_next([=](not_null<QEvent*> e) {
-			if (e->type() == QEvent::UpdateLater) {
-				repeaterSubWrap->toggle(
-					EnhancedSettings::HasExtraContextMenuOption(EnhancedSettings::ExtraContextMenuOption::Repeater),
-					anim::type::normal);
-			}
-		}, content->lifetime());
+		repeaterSubWrap->toggleOn(
+			EnhancedSettings::Watch(
+				EnhancedSettings::Option::ExtraContextMenuOptions
+			) | rpl::map([](const QList<int> &options) {
+				return options.contains(int(
+					EnhancedSettings::ExtraContextMenuOption::Repeater));
+			}));
 
 		const auto repeaterReplyToOrig = AddButtonWithIcon(
 				repeaterContent,
@@ -1103,7 +1151,7 @@ namespace {
 			EnhancedSettings::Option::RepeaterReplyToOriginal,
 			repeaterReplyToOrig);
 		repeaterReplyToOrig->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::RepeaterReplyToOriginal))
+				EnhancedSettings::Watch(EnhancedSettings::Option::RepeaterReplyToOriginal)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::RepeaterReplyToOriginal));
@@ -1120,7 +1168,7 @@ namespace {
 			EnhancedSettings::Option::ReplaceEditButton,
 			replaceEditButton);
 		replaceEditButton->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::ReplaceEditButton))
+				EnhancedSettings::Watch(EnhancedSettings::Option::ReplaceEditButton)
 		)->toggledValue(
 		) | rpl::filter([](bool enabled) {
 			return (enabled != EnhancedSettings::Get(EnhancedSettings::Option::ReplaceEditButton));
@@ -1137,7 +1185,7 @@ namespace {
 			EnhancedSettings::Option::SkipToNext,
 			skipMessage);
 		skipMessage->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::SkipToNext))
+				EnhancedSettings::Watch(EnhancedSettings::Option::SkipToNext)
 		)->toggledValue(
 		) | rpl::filter([](bool enabled) {
 			return (enabled != EnhancedSettings::Get(EnhancedSettings::Option::SkipToNext));
@@ -1158,7 +1206,7 @@ namespace {
 			EnhancedSettings::Option::CommunityChatClick,
 			communityChatClick);
 		communityChatClick->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::CommunityChatClick))
+				EnhancedSettings::Watch(EnhancedSettings::Option::CommunityChatClick)
 		)->toggledChanges(
 		) | rpl::filter([](bool enabled) {
 			return (enabled != EnhancedSettings::Get(EnhancedSettings::Option::CommunityChatClick));
@@ -1188,7 +1236,7 @@ namespace {
 			EnhancedSettings::Option::UseGtApi,
 			useGtApi);
 		useGtApi->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::UseGtApi))
+				EnhancedSettings::Watch(EnhancedSettings::Option::UseGtApi)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::UseGtApi));
@@ -1207,7 +1255,7 @@ namespace {
 			EnhancedSettings::Option::TranslateToTc,
 				translateToTc);
 			translateToTc->toggleOn(
-					rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::TranslateToTc))
+					EnhancedSettings::Watch(EnhancedSettings::Option::TranslateToTc)
 			)->toggledChanges(
 			) | rpl::filter([=](bool toggled) {
 				return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::TranslateToTc));
@@ -1245,7 +1293,7 @@ namespace {
 			EnhancedSettings::Option::AutoUnmute,
 			autoUnmute);
 		autoUnmute->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::AutoUnmute))
+				EnhancedSettings::Watch(EnhancedSettings::Option::AutoUnmute)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::AutoUnmute));
@@ -1264,7 +1312,7 @@ namespace {
 			EnhancedSettings::Option::HdVideo,
 			enableHdVideo);
 		enableHdVideo->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::HdVideo))
+				EnhancedSettings::Watch(EnhancedSettings::Option::HdVideo)
 		)->toggledChanges(
 		) | rpl::filter([=](bool toggled) {
 			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::HdVideo));
@@ -1272,12 +1320,10 @@ namespace {
 			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::HdVideo, toggled);
 		}, voiceChatContent->lifetime());
 
-		auto bitrateValue = rpl::single(
-				BitrateController::BitrateLabel(EnhancedSettings::Get(EnhancedSettings::Option::Bitrate))
-		) | rpl::then(
-				_BitrateChanged.events()
-		) | rpl::map([=] {
-			return BitrateController::BitrateLabel(EnhancedSettings::Get(EnhancedSettings::Option::Bitrate));
+		auto bitrateValue = EnhancedSettings::Watch(
+			EnhancedSettings::Option::Bitrate
+		) | rpl::map([](int bitrate) {
+			return BitrateController::BitrateLabel(bitrate);
 		});
 
 		const auto bitrateController = AddButtonWithLabel(
@@ -1289,11 +1335,6 @@ namespace {
 		registerHighlight(
 			EnhancedSettings::Option::Bitrate,
 			bitrateController);
-		bitrateController->events(
-		) | rpl::on_next([=](not_null<QEvent*> e) {
-			const auto event = e->type();
-			if (event == QEvent::UpdateLater) _BitrateChanged.fire({});
-		}, page->lifetime());
 		bitrateController->addClickHandler([=] {
 			Ui::show(Box<BitrateController>());
 		});
@@ -1307,7 +1348,7 @@ namespace {
 			EnhancedSettings::Option::MprisCallHangup,
 			mprisCallHangup);
 		mprisCallHangup->toggleOn(
-				rpl::single(EnhancedSettings::Get(EnhancedSettings::Option::MprisCallHangup))
+				EnhancedSettings::Watch(EnhancedSettings::Option::MprisCallHangup)
 		)->toggledValue(
 		) | rpl::filter([](bool enabled) {
 			return (enabled != EnhancedSettings::Get(EnhancedSettings::Option::MprisCallHangup));
@@ -1343,6 +1384,51 @@ namespace {
 
 	rpl::producer<QString> Enhanced::title() {
 		return tr::lng_settings_enhanced();
+	}
+
+	void Enhanced::fillTopBarMenu(
+			const Ui::Menu::MenuCallback &addAction) {
+		const auto window = &controller()->window();
+		addAction(
+			tr::lng_export_start(tr::now),
+			[=] {
+				TextUtilities::SetClipboardText({
+					EncodeEnhancedSettingsToText(
+						EnhancedSettings::Serialize()),
+				});
+				window->showToast({
+					.text = {
+						tr::lng_settings_enhanced_export_done(tr::now),
+					},
+					.iconLottie = u"toast/copy"_q,
+					.iconLottieSize = st::toastLottieIconSize,
+				});
+			},
+			&st::menuIconCopy);
+		if (!DecodeEnhancedSettingsFromText(
+				QGuiApplication::clipboard()->text()).ok) {
+			return;
+		}
+		addAction(
+			tr::lng_settings_enhanced_import(tr::now),
+			[=] {
+				const auto decoded = DecodeEnhancedSettingsFromText(
+					QGuiApplication::clipboard()->text());
+				if (!decoded.ok) {
+					window->showToast(
+						tr::lng_settings_enhanced_import_invalid(tr::now));
+					return;
+				}
+				if (!EnhancedSettings::Deserialize(decoded.json)) {
+					window->showToast(
+						tr::lng_settings_enhanced_import_unsupported(
+							tr::now));
+					return;
+				}
+				window->showToast(
+					tr::lng_settings_enhanced_import_done(tr::now));
+			},
+			&st::menuIconImportTheme);
 	}
 
 	Enhanced::Enhanced(

@@ -36,6 +36,8 @@ namespace Settings {
 				QWidget *parent,
 				not_null<Window::SessionController *> controller);
 		[[nodiscard]] rpl::producer<QString> title() override;
+		void fillTopBarMenu(
+			const Ui::Menu::MenuCallback &addAction) override;
 		void showFinished() override;
 
 	private:
@@ -62,10 +64,6 @@ namespace Settings {
 			QString id,
 			std::optional<EnhancedSettings::OptionId> option,
 			not_null<Ui::RpWidget*> widget);
-
-		rpl::event_stream<QString> _AlwaysDeleteChanged;
-		rpl::event_stream<QString> _BitrateChanged;
-		rpl::event_stream<> _RichMessagePreviewBlocksChanged;
 
 		std::vector<std::pair<QString, QPointer<QWidget>>> _highlightControls;
 

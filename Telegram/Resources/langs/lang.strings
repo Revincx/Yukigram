@@ -8787,6 +8787,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_settings_send_comment_after_forwarding" = "Send comment after forwarding";
 "lng_settings_mpris_call_hangup" = "Use media controls to accept or hangup";
 "lng_settings_enhanced" = "Enhanced Settings";
+"lng_settings_enhanced_import" = "Import";
+"lng_settings_enhanced_export_done" = "Enhanced settings code copied to clipboard.";
+"lng_settings_enhanced_import_invalid" = "Clipboard does not contain a valid enhanced settings code.";
+"lng_settings_enhanced_import_unsupported" = "Enhanced settings code is valid, but its data format is not supported.";
+"lng_settings_enhanced_import_done" = "Enhanced settings imported from code in clipboard.";
 "lng_settings_show_media_metadata" = "Show metadata info in media viewer";
 "lng_media_metadata_average_bitrate" = "{bitrate} kbps";
 "lng_media_metadata_silent" = "Silent";
