@@ -1425,8 +1425,11 @@ struct DecodeEnhancedSettingsResult {
 							tr::now));
 					return;
 				}
-				window->showToast(
-					tr::lng_settings_enhanced_import_done(tr::now));
+				window->showToast({
+					.text = { tr::lng_settings_enhanced_import_done(tr::now) },
+					.iconLottie = u"toast/save_to_gallery"_q,
+					.iconLottieSize = st::toastLottieIconSize,
+				});
 			},
 			&st::menuIconImportTheme);
 	}

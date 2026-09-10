@@ -38,6 +38,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 #include "ui/boxes/peer_qr_box.h"
 #include "ui/layers/generic_box.h"
+#include "ui/toast/toast.h"
 #include "main/main_domain.h"
 #include "main/main_session.h"
 #include "storage/storage_domain.h"
@@ -78,6 +79,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mainwindow.h"
 #include "window/window_controller.h"
 #include "window/window_session_controller.h"
+#include "styles/style_chat_helpers.h"
 
 namespace Core::DeepLinks {
 namespace {
@@ -114,7 +116,14 @@ Result HandleEnhancedValue(
 					toast += u"\n"_q
 						+ tr::lng_settings_restart_to_apply(tr::now);
 				}
-				controller->showToast(toast);
+				controller->setHighlightControlId(
+					EnhancedSettings::ControlId(pending.id));
+				controller->showSettings(::Settings::EnhancedId());
+				controller->showToast({
+					.text = std::move(toast),
+					.iconLottie = u"toast/contact_check"_q,
+					.iconLottieSize = st::toastLottieIconSize,
+				});
 				close();
 			},
 			.confirmText = tr::lng_settings_apply(),
