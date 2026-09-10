@@ -128,6 +128,21 @@ elif (mac):
         'CMAKE_GENERATOR': 'Ninja',
     })
 
+if win:
+    environment.update({
+        'MSYS2_MIRROR': os.environ.get('MSYS2_MIRROR', 'repo.msys2.org'),
+        'MSYS2_FALLBACK_MIRROR': os.environ.get(
+            'MSYS2_FALLBACK_MIRROR',
+            'mirror.clarkson.edu'),
+        'MSYS2_PARALLEL_DOWNLOADS': os.environ.get(
+            'MSYS2_PARALLEL_DOWNLOADS',
+            '2'),
+        'MSYS2_RETRY_COUNT': os.environ.get('MSYS2_RETRY_COUNT', '4'),
+        'MSYS2_RETRY_MAX_TIME': os.environ.get(
+            'MSYS2_RETRY_MAX_TIME',
+            '180'),
+    })
+
 ignoreInCacheForThirdParty = [
     'USED_PREFIX',
     'LIBS_DIR',
@@ -486,6 +501,12 @@ win:
     powershell -Command "iwr -OutFile ./msys64.exe https://github.com/msys2/msys2-installer/releases/download/2025-08-30/msys2-base-x86_64-20250830.sfx.exe"
     msys64.exe
     del msys64.exe
+
+    bash -c "printf 'Server = https://%MSYS2_MIRROR%/mingw/\\x24arch/\\nServer = https://%MSYS2_FALLBACK_MIRROR%/msys2/mingw/\\x24arch/\\n' > /etc/pacman.d/mirrorlist.mingw"
+    bash -c "printf 'Server = https://%MSYS2_MIRROR%/msys/\\x24arch/\\nServer = https://%MSYS2_FALLBACK_MIRROR%/msys2/msys/\\x24arch/\\n' > /etc/pacman.d/mirrorlist.msys"
+    bash -c "sed -i '/^XferCommand = /d' /etc/pacman.conf"
+    bash -c "sed -i 's/^ParallelDownloads = .*/ParallelDownloads = %MSYS2_PARALLEL_DOWNLOADS%/' /etc/pacman.conf"
+    bash -c "sed -i '/^ParallelDownloads = /a XferCommand = /usr/bin/curl -L -f -C - --retry %MSYS2_RETRY_COUNT% --retry-max-time %MSYS2_RETRY_MAX_TIME% -o \\x25o \\x25u' /etc/pacman.conf"
 
     bash -c "pacman-key --init; pacman-key --populate; pacman -Syu --noconfirm"
     pacman -Syu --noconfirm ^
