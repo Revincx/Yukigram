@@ -25,6 +25,16 @@ settingsButtonRightLabelSpoiler: SettingsButton(settingsButton) {
 settingsButtonNoIcon: SettingsButton(settingsButton) {
 	padding: margins(22px, 10px, 22px, 8px);
 }
+settingsChatEnhancedTopBarReset: IconButton(infoTopBarMenu) {
+	icon: icon {{ "settings/reload", boxTitleCloseFg }};
+	iconOver: icon {{ "settings/reload", boxTitleCloseFgOver }};
+	iconPosition: point(-1px, -1px);
+}
+settingsChatEnhancedLayerTopBarReset: IconButton(infoLayerTopBarMenu) {
+	icon: icon {{ "settings/reload", boxTitleCloseFg }};
+	iconOver: icon {{ "settings/reload", boxTitleCloseFgOver }};
+	iconPosition: point(-1px, -1px);
+}
 settingsButtonLight: SettingsButton(settingsButton) {
 	textFg: lightButtonFg;
 	textFgOver: lightButtonFgOver;

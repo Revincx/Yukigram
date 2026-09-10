@@ -11,6 +11,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/rp_widget.h"
 #include "ui/round_rect.h"
 #include "base/object_ptr.h"
+#include "base/unique_qptr.h"
 #include "base/weak_qptr.h"
 #include "settings/settings_type.h"
 
@@ -166,6 +167,11 @@ public:
 	}
 	[[nodiscard]] virtual bool hasFlexibleTopBar() const {
 		return false;
+	}
+	[[nodiscard]] virtual base::unique_qptr<Ui::RpWidget> createTopBarButton(
+			QWidget *parent,
+			bool layer) {
+		return nullptr;
 	}
 	virtual void setStepDataReference(std::any &data) {
 	}

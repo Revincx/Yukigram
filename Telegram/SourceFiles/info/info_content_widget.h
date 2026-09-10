@@ -135,6 +135,11 @@ public:
 	virtual void selectionAction(SelectionAction action) {
 	}
 	virtual void fillTopBarMenu(const Ui::Menu::MenuCallback &addAction);
+	[[nodiscard]] virtual base::unique_qptr<Ui::RpWidget> createTopBarButton(
+			QWidget *parent,
+			bool layer) {
+		return nullptr;
+	}
 
 	[[nodiscard]] virtual rpl::producer<> topBarMenuFilledChanges() const {
 		return rpl::never<>();

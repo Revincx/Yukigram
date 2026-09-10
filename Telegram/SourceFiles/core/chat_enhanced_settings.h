@@ -44,6 +44,7 @@ void SetChatFeatureOverride(
 	not_null<PeerData*> peer,
 	ChatFeature feature,
 	ChatFeatureOverride value);
+void ResetChatFeatureOverrides(not_null<PeerData*> peer);
 [[nodiscard]] rpl::producer<ChatFeatureChange> ChatFeatureChanges();
 void NotifyChatFeatureChange(PeerData *peer, ChatFeature feature);
 

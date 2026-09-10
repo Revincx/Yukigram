@@ -230,6 +230,15 @@ void SetChatFeatureOverride(
 	}
 }
 
+void ResetChatFeatureOverrides(not_null<PeerData*> peer) {
+	for (const auto &descriptor : kChatFeatureDescriptors) {
+		SetChatFeatureOverride(
+			peer,
+			descriptor.feature,
+			ChatFeatureOverride::Default);
+	}
+}
+
 rpl::producer<ChatFeatureChange> ChatFeatureChanges() {
 	return ChatFeatureChangeEvents.events();
 }

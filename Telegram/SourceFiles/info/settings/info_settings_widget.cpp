@@ -268,6 +268,12 @@ void Widget::fillTopBarMenu(const Ui::Menu::MenuCallback &addAction) {
 	_inner->fillTopBarMenu(addAction);
 }
 
+base::unique_qptr<Ui::RpWidget> Widget::createTopBarButton(
+		QWidget *parent,
+		bool layer) {
+	return _inner->createTopBarButton(parent, layer);
+}
+
 void Widget::saveState(not_null<Memento*> memento) {
 	memento->setScrollTop(scrollTopSave());
 	auto sectionState = std::any();

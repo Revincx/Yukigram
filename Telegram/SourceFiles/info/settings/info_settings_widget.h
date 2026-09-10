@@ -100,6 +100,9 @@ public:
 	rpl::producer<SelectedItems> selectedListValue() const override;
 	void selectionAction(SelectionAction action) override;
 	void fillTopBarMenu(const Ui::Menu::MenuCallback &addAction) override;
+	[[nodiscard]] base::unique_qptr<Ui::RpWidget> createTopBarButton(
+		QWidget *parent,
+		bool layer) override;
 
 private:
 	void saveState(not_null<Memento*> memento);

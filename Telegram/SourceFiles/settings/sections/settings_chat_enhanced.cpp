@@ -22,6 +22,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/wrap/vertical_layout.h"
 #include "ui/ui_utility.h"
 #include "ui/vertical_list.h"
+#include "ui/toast/toast.h"
 #include "window/window_session_controller.h"
 
 #include <array>
@@ -32,6 +33,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <vector>
 
 #include "styles/style_chat.h"
+#include "styles/style_chat_helpers.h"
+#include "styles/style_layers.h"
 #include "styles/style_settings.h"
 #include "styles/style_window.h"
 
@@ -87,12 +90,18 @@ public:
 	[[nodiscard]] Type id() const override;
 	[[nodiscard]] rpl::producer<QString> title() override;
 	[[nodiscard]] bool centerLayerVertically() const override;
+	[[nodiscard]] base::unique_qptr<Ui::RpWidget> createTopBarButton(
+		QWidget *parent,
+		bool layer) override;
 
 private:
 	void setupContent();
 
 	const Type _id;
 	const not_null<PeerData*> _peer;
+	std::array<
+		std::shared_ptr<rpl::variable<Override>>,
+		static_cast<std::size_t>(Feature::Count)> _values;
 
 };
 
@@ -135,6 +144,39 @@ rpl::producer<QString> ChatEnhancedSection::title() {
 
 bool ChatEnhancedSection::centerLayerVertically() const {
 	return true;
+}
+
+base::unique_qptr<Ui::RpWidget> ChatEnhancedSection::createTopBarButton(
+		QWidget *parent,
+		bool layer) {
+	auto button = base::make_unique_q<Ui::IconButton>(
+		parent,
+		layer
+			? st::settingsChatEnhancedLayerTopBarReset
+			: st::settingsChatEnhancedTopBarReset);
+	button->setAccessibleName(tr::lng_chat_enhanced_reset(tr::now));
+	button->addClickHandler([=] {
+		controller()->show(Ui::MakeConfirmBox({
+			.text = tr::lng_chat_enhanced_reset_sure(),
+			.confirmed = crl::guard(this, [=](Fn<void()> &&close) {
+				EnhancedSettings::ResetChatFeatureOverrides(_peer);
+				for (const auto &value : _values) {
+					if (value) {
+						(*value) = Override::Default;
+					}
+				}
+				close();
+				controller()->showToast({
+					.text = { tr::lng_chat_enhanced_reset_done(tr::now) },
+					.iconLottie = u"toast/contact_check"_q,
+					.iconLottieSize = st::toastLottieIconSize,
+				});
+			}),
+			.confirmText = tr::lng_background_reset_default(),
+			.confirmStyle = &st::attentionBoxButton,
+		}));
+	});
+	return base::unique_qptr<Ui::RpWidget>(std::move(button));
 }
 
 rpl::producer<QString> ForceShowWebPagePreviewTitle() {
@@ -360,10 +402,9 @@ void AddFeature(
 		not_null<Window::SessionController*> controller,
 		not_null<Ui::VerticalLayout*> container,
 		not_null<PeerData*> peer,
-		FeatureDescriptor descriptor) {
+		FeatureDescriptor descriptor,
+		std::shared_ptr<rpl::variable<Override>> value) {
 	Expects(descriptor.title != nullptr);
-	const auto value = std::make_shared<rpl::variable<Override>>(
-		EnhancedSettings::GetChatFeatureOverride(peer, descriptor.feature));
 	const auto button = AddButtonWithLabel(
 		container,
 		descriptor.title(),
@@ -428,7 +469,19 @@ void ChatEnhancedSection::setupContent() {
 		for (const auto &descriptor : kFeatureDescriptors) {
 			if (descriptor.group == group
 				&& IsAvailable(_peer, descriptor)) {
-				AddFeature(controller(), inner, _peer, descriptor);
+				const auto index = static_cast<std::size_t>(
+					descriptor.feature);
+				auto &value = _values[index];
+				value = std::make_shared<rpl::variable<Override>>(
+					EnhancedSettings::GetChatFeatureOverride(
+						_peer,
+						descriptor.feature));
+				AddFeature(
+					controller(),
+					inner,
+					_peer,
+					descriptor,
+					value);
 			}
 		}
 		Ui::AddSkip(content);

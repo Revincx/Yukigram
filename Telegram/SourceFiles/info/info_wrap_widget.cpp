@@ -430,6 +430,12 @@ void WrapWidget::setupTopBarMenuToggle() {
 		addTopBarMenuButton();
 		addProfileCallsButton();
 	} else if (section.type() == Section::Type::Settings) {
+		auto directButton = _content->createTopBarButton(
+			_topBar,
+			wrap() == Wrap::Layer);
+		if (directButton) {
+			_topBar->addButton(std::move(directButton));
+		}
 		addTopBarMenuButton();
 		if (section.settingsType() == ::Settings::MainId()) {
 			const auto &st = (wrap() == Wrap::Layer)
