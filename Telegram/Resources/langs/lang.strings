@@ -8859,8 +8859,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_hd_video_hint" = "Video bitrate is changed! Rejoin a voice chat if you've already joined.";
 "lng_settings_share_current_setting" = "Share current setting";
 "lng_settings_apply_shared_value_title" = "Import enhanced setting?";
-"lng_settings_apply_shared_value" = "This link will overwrite the current value this enhanced option: \n\n{option}";
-"lng_settings_apply_shared_value_restart" = "This link will overwrite the current value of this enhanced option: \n\n{option}\n\nThe app will restart immediately to apply the change.";
+"lng_settings_apply_shared_value" = "This link will overwrite the current value of this enhanced option: \n\n{option}";
+"lng_settings_shared_value_applied" = "Enhanced setting applied.";
+"lng_settings_restart_to_apply" = "Restart the app for this change to take effect.";
 
 "lng_bitrate_controller" = "Audio bitrate";
 "lng_bitrate_controller_desc" = "Warning: changing this parameter to high values may affect user on slow networks.";

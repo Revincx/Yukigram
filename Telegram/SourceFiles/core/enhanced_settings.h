@@ -225,6 +225,11 @@ struct PendingValue {
 	StoredValue value;
 };
 
+enum class RestartNotification {
+	Show,
+	Skip,
+};
+
 [[nodiscard]] const DescriptorList &Descriptors();
 [[nodiscard]] const Descriptor &DescriptorFor(OptionId id);
 [[nodiscard]] std::optional<OptionId> OptionByControlId(
@@ -268,12 +273,12 @@ template <typename Value>
 [[nodiscard]] std::optional<PendingValue> ParseSharedValue(
 	OptionId id,
 	const QMap<QString, QString> &params);
-[[nodiscard]] bool IsCurrentValue(const PendingValue &value);
 
 bool ApplyOption(
 	not_null<Window::SessionController*> controller,
 	OptionId id,
-	StoredValue value);
+	StoredValue value,
+	RestartNotification restartNotification = RestartNotification::Show);
 
 template <typename Value>
 bool ApplyOption(

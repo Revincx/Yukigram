@@ -93,33 +93,28 @@ Result HandleEnhancedValue(
 		return Result::Unsupported;
 	}
 	const auto pending = *parsed;
-	const auto restart = EnhancedSettings::DescriptorFor(id).restartRequired
-		&& !EnhancedSettings::IsCurrentValue(pending);
 	const auto controller = ctx.controller;
 	controller->show(Box([=](not_null<Ui::GenericBox*> box) {
 		const auto optionTitle = EnhancedSettings::OptionTitle(pending.id);
 		Ui::ConfirmBox(box, Ui::ConfirmBoxArgs{
-			.text = restart
-				? tr::lng_settings_apply_shared_value_restart(
-					tr::now,
-					lt_option,
-					optionTitle)
-				: tr::lng_settings_apply_shared_value(
-					tr::now,
-					lt_option,
-					optionTitle),
+			.text = tr::lng_settings_apply_shared_value(
+				tr::now,
+				lt_option,
+				optionTitle),
 			.confirmed = [=](Fn<void()> close) {
 				const auto changed = EnhancedSettings::ApplyOption(
 					controller,
 					pending.id,
-					pending.value);
-				if (!changed
-					|| !EnhancedSettings::DescriptorFor(pending.id)
+					pending.value,
+					EnhancedSettings::RestartNotification::Skip);
+				auto toast = tr::lng_settings_shared_value_applied(tr::now);
+				if (changed
+					&& EnhancedSettings::DescriptorFor(pending.id)
 						.restartRequired) {
-					controller->setHighlightControlId(
-						EnhancedSettings::ControlId(pending.id));
-					controller->showSettings(::Settings::EnhancedId());
+					toast += u"\n"_q
+						+ tr::lng_settings_restart_to_apply(tr::now);
 				}
+				controller->showToast(toast);
 				close();
 			},
 			.confirmText = tr::lng_settings_apply(),

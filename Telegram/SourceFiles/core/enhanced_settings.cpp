@@ -9,7 +9,6 @@ https://github.com/TDesktop-x64/tdesktop/blob/dev/LEGAL
 #include "apiwrap.h"
 #include "base/parse_helper.h"
 #include "base/qthelp_url.h"
-#include "core/application.h"
 #include "core/chat_enhanced_settings.h"
 #include "data/data_histories.h"
 #include "data/data_peer_id.h"
@@ -891,16 +890,11 @@ std::optional<PendingValue> ParseSharedValue(
 	return std::nullopt;
 }
 
-bool IsCurrentValue(const PendingValue &value) {
-	return GetValue(value.id) == Normalize(
-		DescriptorFor(value.id),
-		value.value);
-}
-
 bool ApplyOption(
 		not_null<Window::SessionController*> controller,
 		OptionId id,
-		StoredValue value) {
+		StoredValue value,
+		RestartNotification restartNotification) {
 	if (!SetValue(id, std::move(value))) {
 		return false;
 	}
@@ -951,8 +945,10 @@ bool ApplyOption(
 	if (effects & OptionEffect::ShowBitrateHint) {
 		Ui::Toast::Show(tr::lng_bitrate_controller_hint(tr::now));
 	}
-	if (descriptor.restartRequired) {
-		Core::Restart();
+	if (descriptor.restartRequired
+		&& restartNotification == RestartNotification::Show) {
+		controller->showToast(
+			tr::lng_settings_restart_to_apply(tr::now));
 	}
 	return true;
 }
