@@ -133,7 +133,7 @@ if win:
         'MSYS2_MIRROR': os.environ.get('MSYS2_MIRROR', 'repo.msys2.org'),
         'MSYS2_FALLBACK_MIRROR': os.environ.get(
             'MSYS2_FALLBACK_MIRROR',
-            'mirror.clarkson.edu'),
+            'mirror.msys2.org'),
         'MSYS2_PARALLEL_DOWNLOADS': os.environ.get(
             'MSYS2_PARALLEL_DOWNLOADS',
             '2'),
@@ -502,8 +502,8 @@ win:
     msys64.exe
     del msys64.exe
 
-    bash -c "printf 'Server = https://%MSYS2_MIRROR%/mingw/\\x24arch/\\nServer = https://%MSYS2_FALLBACK_MIRROR%/msys2/mingw/\\x24arch/\\n' > /etc/pacman.d/mirrorlist.mingw"
-    bash -c "printf 'Server = https://%MSYS2_MIRROR%/msys/\\x24arch/\\nServer = https://%MSYS2_FALLBACK_MIRROR%/msys2/msys/\\x24arch/\\n' > /etc/pacman.d/mirrorlist.msys"
+    bash -c "printf 'Server = https://%MSYS2_MIRROR%/mingw/\\x24repo/\\nServer = https://%MSYS2_FALLBACK_MIRROR%/mingw/\\x24repo/\\n' > /etc/pacman.d/mirrorlist.mingw"
+    bash -c "printf 'Server = https://%MSYS2_MIRROR%/msys/\\x24arch/\\nServer = https://%MSYS2_FALLBACK_MIRROR%/msys/\\x24arch/\\n' > /etc/pacman.d/mirrorlist.msys"
     bash -c "sed -i '/^XferCommand = /d' /etc/pacman.conf"
     bash -c "sed -i 's/^ParallelDownloads = .*/ParallelDownloads = %MSYS2_PARALLEL_DOWNLOADS%/' /etc/pacman.conf"
     bash -c "sed -i '/^ParallelDownloads = /a XferCommand = /usr/bin/curl -L -f -C - --retry %MSYS2_RETRY_COUNT% --retry-max-time %MSYS2_RETRY_MAX_TIME% -o \\x25o \\x25u' /etc/pacman.conf"
