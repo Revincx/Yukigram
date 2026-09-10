@@ -105,19 +105,6 @@ struct DecodeEnhancedSettingsResult {
 	return result;
 }
 
-[[nodiscard]] EnhancedSettings::IntegerConstraint StickerHeightConstraint() {
-	return EnhancedSettings::IntegerConstraintFor(
-		EnhancedSettings::Option::StickerHeight);
-}
-
-[[nodiscard]] int StickerHeightForIndex(int index) {
-	return StickerHeightConstraint().minimum + index;
-}
-
-[[nodiscard]] int StickerHeightIndexForHeight(int height) {
-	return height - StickerHeightConstraint().minimum;
-}
-
 [[nodiscard]] QString StickerHeightLabel(int height) {
 	return tr::lng_settings_sticker_height_pixels(
 		tr::now,
@@ -133,6 +120,52 @@ struct DecodeEnhancedSettingsResult {
 		buffer.size() * sizeof(mtpPrime));
 	return QString::fromLatin1(
 		bytes.toBase64(QByteArray::Base64UrlEncoding));
+}
+
+[[nodiscard]] not_null<Button*> AddEnhancedOptionRow(
+		not_null<Ui::VerticalLayout*> container,
+		rpl::producer<QString> titleText,
+		rpl::producer<QString> aboutText,
+		const style::SettingsButton &buttonStyle,
+		const style::FlatLabel &titleStyle = st::settingsExperimentalTitle) {
+	const auto &titlePadding = st::settingsExperimentalTitlePadding;
+	const auto &aboutPadding = st::settingsExperimentalAboutPadding;
+	const auto button = Ui::CreateChild<Button>(
+		container.get(),
+		rpl::single(QString()),
+		buttonStyle);
+	const auto title = container->add(
+		object_ptr<Ui::FlatLabel>(
+			container,
+			std::move(titleText),
+			titleStyle),
+		titlePadding);
+	const auto about = container->add(
+		object_ptr<Ui::FlatLabel>(
+			container,
+			std::move(aboutText),
+			st::settingsExperimentalAbout),
+		aboutPadding);
+	title->setAttribute(Qt::WA_TransparentForMouseEvents);
+	about->setAttribute(Qt::WA_TransparentForMouseEvents);
+	rpl::combine(
+		container->widthValue(),
+		title->heightValue(),
+		about->heightValue()
+	) | rpl::on_next([=](int width, int titleHeight, int aboutHeight) {
+		button->resize(width, titlePadding.top()
+			+ titleHeight
+			+ titlePadding.bottom()
+			+ aboutPadding.top()
+			+ aboutHeight
+			+ aboutPadding.bottom());
+	}, button->lifetime());
+	title->topValue(
+	) | rpl::on_next([=](int top) {
+		button->moveToLeft(0, top - titlePadding.top());
+	}, button->lifetime());
+	button->show();
+	return button;
 }
 
 [[nodiscard]] not_null<Ui::VerticalLayout*> AddEnhancedGroup(
@@ -598,106 +631,146 @@ struct DecodeEnhancedSettingsResult {
 		return Enhanced::Id();
 	}
 
+	not_null<Button*> Enhanced::addOptionRow(
+			not_null<Ui::VerticalLayout*> content,
+			EnhancedSettings::OptionId id,
+			std::optional<rpl::producer<QString>> about) {
+		const auto &descriptor = EnhancedSettings::DescriptorFor(id);
+		const auto title = descriptor.title;
+		Expects(title != nullptr);
+		const auto &buttonStyle = descriptor.restartRequired
+			? st::settingsAttentionButton
+			: st::settingsButtonNoIcon;
+		const auto button = about
+			? AddEnhancedOptionRow(
+				content,
+				(*title)(),
+				std::move(*about),
+				buttonStyle,
+				descriptor.restartRequired
+					? st::settingsEnhancedAttentionTitle
+					: st::settingsExperimentalTitle)
+			: AddButtonWithIcon(content, (*title)(), buttonStyle);
+		registerHighlight(id, button);
+		return button;
+	}
+
+	void Enhanced::addToggleOption(
+			not_null<Ui::VerticalLayout*> content,
+			EnhancedSettings::Key<bool> key,
+			std::optional<rpl::producer<QString>> about) {
+		const auto button = addOptionRow(content, key.id, std::move(about));
+		button->toggleOn(
+			EnhancedSettings::Watch(key)
+		)->toggledChanges(
+		) | rpl::filter([=](bool value) {
+			return value != EnhancedSettings::Get(key);
+		}) | rpl::on_next([=](bool value) {
+			EnhancedSettings::ApplyOption(controller(), key, value);
+		}, content->lifetime());
+	}
+
+	void Enhanced::addActionOption(
+			not_null<Ui::VerticalLayout*> content,
+			EnhancedSettings::OptionId id,
+			Fn<void()> handler,
+			std::optional<rpl::producer<QString>> about) {
+		addOptionRow(content, id, std::move(about))->addClickHandler(
+			std::move(handler));
+	}
+
+	not_null<Button*> Enhanced::addLabeledOption(
+			not_null<Ui::VerticalLayout*> content,
+			EnhancedSettings::OptionId id,
+			rpl::producer<QString> label) {
+		const auto &descriptor = EnhancedSettings::DescriptorFor(id);
+		const auto title = descriptor.title;
+		Expects(title != nullptr);
+		const auto &buttonStyle = descriptor.restartRequired
+			? st::settingsAttentionButton
+			: st::settingsButtonNoIcon;
+		const auto button = AddButtonWithLabel(
+			content,
+			(*title)(),
+			std::move(label),
+			buttonStyle);
+		registerHighlight(id, button);
+		return button;
+	}
+
+	void Enhanced::addLabeledActionOption(
+			not_null<Ui::VerticalLayout*> content,
+			EnhancedSettings::OptionId id,
+			rpl::producer<QString> label,
+			Fn<void()> handler) {
+		addLabeledOption(
+			content,
+			id,
+			std::move(label))->addClickHandler(std::move(handler));
+	}
+
+	void Enhanced::addIntegerSliderOption(
+			not_null<Ui::VerticalLayout*> content,
+			EnhancedSettings::Key<int> key,
+			Fn<QString(int)> label,
+			bool zeroAsMaximum) {
+		const auto constraint = EnhancedSettings::IntegerConstraintFor(key);
+		Expects(constraint.minimum < constraint.maximum);
+		const auto displayValue = [=] {
+			const auto stored = EnhancedSettings::Get(key);
+			return (!stored && zeroAsMaximum) ? constraint.maximum : stored;
+		};
+		const auto valueLabel = content->lifetime(
+		).make_state<rpl::event_stream<QString>>();
+		addLabeledOption(
+			content,
+			key.id,
+			valueLabel->events_starting_with(label(displayValue())));
+
+		const auto slider = content->add(
+			object_ptr<Ui::MediaSliderWheelless>(content, st::settingsScale),
+			st::settingsBigScalePadding);
+		slider->resize(slider->width(), st::settingsScale.seekSize.height());
+		slider->setAccessibleName(EnhancedSettings::OptionTitle(key.id));
+
+		const auto fromIndex = [=](int index) {
+			return constraint.minimum + index;
+		};
+		const auto toIndex = [=](int value) {
+			return value - constraint.minimum;
+		};
+		const auto sections = constraint.maximum - constraint.minimum;
+		slider->setPseudoDiscrete(
+			sections + 1,
+			[](int index) { return index; },
+			toIndex(displayValue()),
+			[=](int index) { valueLabel->fire(label(fromIndex(index))); },
+			[=](int index) {
+				EnhancedSettings::ApplyOption(
+					controller(),
+					key,
+					fromIndex(index));
+			});
+		EnhancedSettings::Changes(
+			key
+		) | rpl::on_next([=] {
+			const auto value = displayValue();
+			slider->setValue(toIndex(value) / float64(sections));
+			valueLabel->fire(label(value));
+		}, content->lifetime());
+	}
+
 	void Enhanced::setupMessages(not_null<Ui::VerticalLayout*> content) {
-		const auto showMessageId = AddButtonWithIcon(
-				content,
-				tr::lng_settings_show_message_id(),
-				st::settingsAttentionButton
-		);
-		registerHighlight(
-			EnhancedSettings::Option::ShowMessagesId,
-			showMessageId);
-		showMessageId->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::ShowMessagesId)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::ShowMessagesId));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::ShowMessagesId, toggled);
-		}, content->lifetime());
-
-		const auto forceShowWebPagePreview = AddButtonWithIcon(
-				content,
-				tr::lng_settings_force_show_webpage_preview(),
-				st::settingsButtonNoIcon);
-		registerHighlight(
-			EnhancedSettings::Option::ForceShowWebPagePreview,
-			forceShowWebPagePreview);
-		forceShowWebPagePreview->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::ForceShowWebPagePreview)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled
-				!= EnhancedSettings::Get(EnhancedSettings::Option::ForceShowWebPagePreview));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::ForceShowWebPagePreview, toggled);
-		}, content->lifetime());
-
-		const auto disableAutoFetchWebPagePreview = AddButtonWithIcon(
-				content,
-				tr::lng_settings_disable_auto_fetch_webpage_preview(),
-				st::settingsButtonNoIcon);
-		registerHighlight(
-			EnhancedSettings::Option::DisableAutoFetchWebPagePreview,
-			disableAutoFetchWebPagePreview);
-		disableAutoFetchWebPagePreview->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::DisableAutoFetchWebPagePreview)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::DisableAutoFetchWebPagePreview));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::DisableAutoFetchWebPagePreview,
-				toggled);
-		}, content->lifetime());
-
-		const auto removeMediaSpoiler = AddButtonWithIcon(
-				content,
-				tr::lng_settings_remove_media_spoiler(),
-				st::settingsButtonNoIcon);
-		registerHighlight(
-			EnhancedSettings::Option::RemoveMediaSpoiler,
-			removeMediaSpoiler);
-		removeMediaSpoiler->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::RemoveMediaSpoiler)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::RemoveMediaSpoiler));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::RemoveMediaSpoiler, toggled);
-		}, content->lifetime());
-
-		const auto showMediaMetadata = AddButtonWithIcon(
+		addToggleOption(content, EnhancedSettings::Option::ShowMessagesId);
+		addToggleOption(
 			content,
-			tr::lng_settings_show_media_metadata(),
-			st::settingsButtonNoIcon);
-		registerHighlight(
-			EnhancedSettings::Option::ShowMediaMetadata,
-			showMediaMetadata);
-		showMediaMetadata->toggleOn(
-			EnhancedSettings::Watch(EnhancedSettings::Option::ShowMediaMetadata)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return toggled != EnhancedSettings::Get(EnhancedSettings::Option::ShowMediaMetadata);
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::ShowMediaMetadata, toggled);
-		}, content->lifetime());
-
-		const auto hideBlockedMessages = AddButtonWithIcon(
+			EnhancedSettings::Option::ForceShowWebPagePreview);
+		addToggleOption(
 			content,
-			tr::lng_settings_hide_messages(),
-			st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::HideBlockedMessages,
-			hideBlockedMessages);
-		hideBlockedMessages->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::HideBlockedMessages)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::HideBlockedMessages));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::HideBlockedMessages, toggled);
-		}, content->lifetime());
+			EnhancedSettings::Option::DisableAutoFetchWebPagePreview);
+		addToggleOption(content, EnhancedSettings::Option::RemoveMediaSpoiler);
+		addToggleOption(content, EnhancedSettings::Option::ShowMediaMetadata);
+		addToggleOption(content, EnhancedSettings::Option::HideBlockedMessages);
 
 		auto richMessagePreviewBlocksValue = rpl::combine(
 			tr::lng_font_default(),
@@ -706,428 +779,65 @@ struct DecodeEnhancedSettingsResult {
 		) | rpl::map([](QString defaultLabel, int limit) {
 			return limit ? QString::number(limit) : std::move(defaultLabel);
 		});
-		const auto richMessagePreviewBlocks = AddButtonWithLabel(
+		addLabeledActionOption(
 			content,
-			tr::lng_settings_rich_message_preview_blocks(),
+			EnhancedSettings::Option::RichMessagePreviewBlocksLimit.id,
 			std::move(richMessagePreviewBlocksValue),
-			st::settingsButtonNoIcon);
-		registerHighlight(
-			EnhancedSettings::Option::RichMessagePreviewBlocksLimit,
-			richMessagePreviewBlocks);
-		richMessagePreviewBlocks->addClickHandler([=] {
-			Ui::show(Box<RichMessagePreviewBlocksBox>());
-		});
+			[=] { Ui::show(Box<RichMessagePreviewBlocksBox>()); });
 	}
 
 	void Enhanced::setupInterface(not_null<Ui::VerticalLayout*> content) {
-		const auto disablePremiumAnimation = AddButtonWithIcon(
-				content,
-				tr::lng_settings_disable_premium_animation(),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::DisablePremiumAnimation,
-			disablePremiumAnimation);
-		disablePremiumAnimation->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::DisablePremiumAnimation)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::DisablePremiumAnimation));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::DisablePremiumAnimation, toggled);
-		}, content->lifetime());
-
-		const auto showGroupSenderAvatar = AddButtonWithIcon(
-				content,
-				tr::lng_settings_show_group_sender_avatar(),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::ShowGroupSenderAvatar,
-			showGroupSenderAvatar);
-		showGroupSenderAvatar->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::ShowGroupSenderAvatar)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::ShowGroupSenderAvatar));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::ShowGroupSenderAvatar, toggled);
-		}, content->lifetime());
-
-		const auto showGroupSenderOnlineStatus = AddButtonWithIcon(
-				content,
-				tr::lng_settings_show_group_sender_online_status(),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::ShowGroupSenderOnlineStatus,
-			showGroupSenderOnlineStatus);
-		showGroupSenderOnlineStatus->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::ShowGroupSenderOnlineStatus)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled
-				!= EnhancedSettings::Get(EnhancedSettings::Option::ShowGroupSenderOnlineStatus));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::ShowGroupSenderOnlineStatus, toggled);
-		}, content->lifetime());
-
-		const auto showSeconds = AddButtonWithIcon(
+		addToggleOption(
 			content,
-			tr::lng_settings_show_seconds(),
-			st::settingsAttentionButton
-		);
-		registerHighlight(
-			EnhancedSettings::Option::ShowSeconds,
-			showSeconds);
-		showSeconds->toggleOn(
-			EnhancedSettings::Watch(EnhancedSettings::Option::ShowSeconds)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::ShowSeconds));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::ShowSeconds, toggled);
-		}, content->lifetime());
-
-		const auto storedStickerHeight = EnhancedSettings::Get(EnhancedSettings::Option::StickerHeight);
-		const auto stickerConstraint = StickerHeightConstraint();
-		const auto currentStickerHeight = storedStickerHeight
-			? storedStickerHeight
-			: stickerConstraint.maximum;
-		const auto stickerHeightLabel = content->lifetime(
-		).make_state<rpl::event_stream<QString>>();
-		const auto stickerHeight = AddButtonWithLabel(
+			EnhancedSettings::Option::DisablePremiumAnimation);
+		addToggleOption(content, EnhancedSettings::Option::ShowGroupSenderAvatar);
+		addToggleOption(
 			content,
-			tr::lng_settings_sticker_height(),
-			stickerHeightLabel->events_starting_with(
-				StickerHeightLabel(currentStickerHeight)),
-			st::settingsButtonNoIcon);
-		registerHighlight(
-			EnhancedSettings::Option::StickerHeight, stickerHeight);
+			EnhancedSettings::Option::ShowGroupSenderOnlineStatus);
+		addToggleOption(content, EnhancedSettings::Option::ShowSeconds);
 
-		const auto slider = content->add(
-			object_ptr<Ui::MediaSliderWheelless>(content, st::settingsScale),
-			st::settingsBigScalePadding);
-		slider->resize(slider->width(), st::settingsScale.seekSize.height());
-		slider->setAccessibleName(tr::lng_settings_sticker_height(tr::now));
+		addIntegerSliderOption(
+			content,
+			EnhancedSettings::Option::StickerHeight,
+			StickerHeightLabel,
+			true);
 
-		const auto saveStickerHeight = [=](int height) {
-			if (height == EnhancedSettings::Get(EnhancedSettings::Option::StickerHeight)) {
-				return;
-			}
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::StickerHeight, height);
-		};
-		slider->setPseudoDiscrete(
-			stickerConstraint.maximum - stickerConstraint.minimum + 1,
-			[](int index) { return index; },
-			StickerHeightIndexForHeight(currentStickerHeight),
-			[=](int index) {
-				stickerHeightLabel->fire(
-					StickerHeightLabel(StickerHeightForIndex(index)));
-			},
-			[=](int index) {
-				saveStickerHeight(StickerHeightForIndex(index));
-			});
-		EnhancedSettings::Changes(
-			EnhancedSettings::Option::StickerHeight
-		) | rpl::on_next([=] {
-			const auto stored = EnhancedSettings::Get(
-				EnhancedSettings::Option::StickerHeight);
-			const auto height = stored ? stored : stickerConstraint.maximum;
-			const auto sections = stickerConstraint.maximum
-				- stickerConstraint.minimum;
-			slider->setValue(StickerHeightIndexForHeight(height) / float64(sections));
-			stickerHeightLabel->fire(StickerHeightLabel(height));
-		}, content->lifetime());
-
-		const auto showEmojiButtonAsText = AddButtonWithIcon(
-				content,
-				tr::lng_settings_show_emoji_button_as_text(),
-				st::settingsAttentionButton
-		);
-		registerHighlight(
+		addToggleOption(
+			content,
 			EnhancedSettings::Option::ShowEmojiButtonAsText,
-			showEmojiButtonAsText);
-		showEmojiButtonAsText->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::ShowEmojiButtonAsText)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::ShowEmojiButtonAsText));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::ShowEmojiButtonAsText, toggled);
-		}, content->lifetime());
-
-		AddDividerText(content, tr::lng_show_emoji_button_as_text_desc());
-
-		const auto showScheduledButton = AddButtonWithIcon(
-				content,
-				tr::lng_settings_show_scheduled_button(),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::ShowScheduledButton,
-			showScheduledButton);
-		showScheduledButton->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::ShowScheduledButton)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::ShowScheduledButton));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::ShowScheduledButton, toggled);
-		}, content->lifetime());
-
-		const auto showPeerId = AddButtonWithIcon(
+			tr::lng_show_emoji_button_as_text_desc());
+		addToggleOption(content, EnhancedSettings::Option::ShowScheduledButton);
+		addToggleOption(content, EnhancedSettings::Option::ShowPeerId);
+		addToggleOption(content, EnhancedSettings::Option::HideAllChats);
+		addToggleOption(content, EnhancedSettings::Option::HideCounter);
+		addToggleOption(content, EnhancedSettings::Option::HideStories);
+		addToggleOption(content, EnhancedSettings::Option::HideStarRatings);
+		addToggleOption(content, EnhancedSettings::Option::ForceMobile);
+		addToggleOption(
 			content,
-			tr::lng_settings_show_peer_id(),
-			st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::ShowPeerId,
-			showPeerId);
-		showPeerId->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::ShowPeerId)
-		)->toggledValue(
-		) | rpl::filter([](bool enabled) {
-			return (enabled != EnhancedSettings::Get(EnhancedSettings::Option::ShowPeerId));
-		}) | rpl::on_next([=](bool enabled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::ShowPeerId, enabled);
-		}, content->lifetime());
-
-		const auto hideAllChats = AddButtonWithIcon(
-			content,
-			tr::lng_settings_hide_all_chats(),
-			st::settingsAttentionButton
-		);
-		registerHighlight(
-			EnhancedSettings::Option::HideAllChats,
-			hideAllChats);
-		hideAllChats->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::HideAllChats)
-		)->toggledValue(
-		) | rpl::filter([](bool enabled) {
-			return (enabled != EnhancedSettings::Get(EnhancedSettings::Option::HideAllChats));
-		}) | rpl::on_next([=](bool enabled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::HideAllChats, enabled);
-		}, content->lifetime());
-
-		const auto hideCounter = AddButtonWithIcon(
-				content,
-				tr::lng_settings_hide_counter(),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::HideCounter,
-			hideCounter);
-		hideCounter->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::HideCounter)
-		)->toggledValue(
-		) | rpl::filter([](bool enabled) {
-			return (enabled != EnhancedSettings::Get(EnhancedSettings::Option::HideCounter));
-		}) | rpl::on_next([=](bool enabled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::HideCounter, enabled);
-		}, content->lifetime());
-
-		const auto hideStories = AddButtonWithIcon(
-				content,
-				tr::lng_settings_hide_stories(),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::HideStories,
-			hideStories);
-		hideStories->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::HideStories)
-		)->toggledValue(
-		) | rpl::filter([](bool enabled) {
-			return (enabled != EnhancedSettings::Get(EnhancedSettings::Option::HideStories));
-		}) | rpl::on_next([=](bool enabled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::HideStories, enabled);
-		}, content->lifetime());
-
-		const auto hideStarRatings = AddButtonWithIcon(
-				content,
-				tr::lng_settings_hide_star_ratings(),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::HideStarRatings,
-			hideStarRatings);
-		hideStarRatings->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::HideStarRatings)
-		)->toggledValue(
-		) | rpl::filter([](bool enabled) {
-			return (enabled != EnhancedSettings::Get(EnhancedSettings::Option::HideStarRatings));
-		}) | rpl::on_next([=](bool enabled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::HideStarRatings, enabled);
-		}, content->lifetime());
-
-		const auto forceMobile = AddButtonWithIcon(
-				content,
-				tr::lng_settings_force_mobile(),
-				st::settingsAttentionButton
-		);
-		registerHighlight(
-			EnhancedSettings::Option::ForceMobile,
-			forceMobile);
-		forceMobile->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::ForceMobile)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::ForceMobile));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::ForceMobile, toggled);
-		}, content->lifetime());
-
-		const auto hideDeleteForOthersCheckbox = AddButtonWithIcon(
-				content,
-				tr::lng_settings_hide_delete_for_others_checkbox(),
-				st::settingsButtonNoIcon);
-		registerHighlight(
-			EnhancedSettings::Option::HideDeleteForOthersCheckbox,
-			hideDeleteForOthersCheckbox);
-		hideDeleteForOthersCheckbox->toggleOn(
-			EnhancedSettings::Watch(EnhancedSettings::Option::HideDeleteForOthersCheckbox)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return toggled
-				!= EnhancedSettings::Get(EnhancedSettings::Option::HideDeleteForOthersCheckbox);
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::HideDeleteForOthersCheckbox, toggled);
-		}, content->lifetime());
+			EnhancedSettings::Option::HideDeleteForOthersCheckbox);
 	}
 
 	void Enhanced::setupBehavior(not_null<Ui::VerticalLayout*> content) {
-
-		const auto showSimilarOnJoined = AddButtonWithIcon(
-				content,
-				tr::lng_settings_show_similar_on_joined(),
-				st::settingsAttentionButton
-		);
-		registerHighlight(
-			EnhancedSettings::Option::ShowSimilarOnJoined,
-			showSimilarOnJoined);
-		showSimilarOnJoined->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::ShowSimilarOnJoined)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::ShowSimilarOnJoined));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::ShowSimilarOnJoined, toggled);
-		}, content->lifetime());
-
-		const auto moreRightActionComments = AddButtonWithIcon(
-				content,
-				tr::lng_settings_more_right_action_comments(),
-				st::settingsAttentionButton
-		);
-		registerHighlight(
-			EnhancedSettings::Option::MoreRightActionComments,
-			moreRightActionComments);
-		moreRightActionComments->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::MoreRightActionComments)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::MoreRightActionComments));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::MoreRightActionComments, toggled);
-		}, content->lifetime());
-
-		const auto sendCommentAfterForwarding = AddButtonWithIcon(
-				content,
-				tr::lng_settings_send_comment_after_forwarding(),
-				st::settingsButtonNoIcon);
-		registerHighlight(
-			EnhancedSettings::Option::SendCommentAfterForwarding,
-			sendCommentAfterForwarding);
-		sendCommentAfterForwarding->toggleOn(
-			EnhancedSettings::Watch(EnhancedSettings::Option::SendCommentAfterForwarding)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return toggled
-				!= EnhancedSettings::Get(EnhancedSettings::Option::SendCommentAfterForwarding);
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::SendCommentAfterForwarding, toggled);
-		}, content->lifetime());
-
-		const auto disableCloudDraftSync = AddButtonWithIcon(
-				content,
-				tr::lng_settings_disable_cloud_draft_sync(),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::DisableCloudDraftSync,
-			disableCloudDraftSync);
-		disableCloudDraftSync->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::DisableCloudDraftSync)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::DisableCloudDraftSync));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::DisableCloudDraftSync, toggled);
-		}, content->lifetime());
-
-		const auto disableSyncDraftToCloud = AddButtonWithIcon(
-				content,
-				tr::lng_settings_disable_sync_draft_to_cloud(),
-				st::settingsButtonNoIcon);
-		registerHighlight(
-			EnhancedSettings::Option::DisableSyncDraftToCloud,
-			disableSyncDraftToCloud);
-		disableSyncDraftToCloud->toggleOn(
-			EnhancedSettings::Watch(EnhancedSettings::Option::DisableSyncDraftToCloud)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return toggled
-				!= EnhancedSettings::Get(EnhancedSettings::Option::DisableSyncDraftToCloud);
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::DisableSyncDraftToCloud, toggled);
-		}, content->lifetime());
-
-		const auto disableLinkWarning = AddButtonWithIcon(
-				content,
-				tr::lng_settings_disable_link_warning(),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::DisableLinkWarning,
-			disableLinkWarning);
-		disableLinkWarning->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::DisableLinkWarning)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::DisableLinkWarning));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::DisableLinkWarning, toggled);
-		}, content->lifetime());
-
-		const auto disableGlobalSearch = AddButtonWithIcon(
-				content,
-				tr::lng_settings_disable_global_search(),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::DisableGlobalSearch,
-			disableGlobalSearch);
-		disableGlobalSearch->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::DisableGlobalSearch)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::DisableGlobalSearch));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::DisableGlobalSearch, toggled);
-		}, content->lifetime());
-
-		const auto extraContextMenu = AddButtonWithIcon(
-				content,
-				tr::lng_settings_extra_context_menu_options(),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::ExtraContextMenuOptions,
-			extraContextMenu);
-		extraContextMenu->addClickHandler([=] {
-			Ui::show(Box<ExtraContextMenuBox>());
-		});
+		addToggleOption(content, EnhancedSettings::Option::ShowSimilarOnJoined);
+		addToggleOption(
+			content,
+			EnhancedSettings::Option::MoreRightActionComments);
+		addToggleOption(
+			content,
+			EnhancedSettings::Option::SendCommentAfterForwarding);
+		addToggleOption(
+			content,
+			EnhancedSettings::Option::DisableCloudDraftSync);
+		addToggleOption(
+			content,
+			EnhancedSettings::Option::DisableSyncDraftToCloud);
+		addToggleOption(content, EnhancedSettings::Option::DisableLinkWarning);
+		addToggleOption(content, EnhancedSettings::Option::DisableGlobalSearch);
+		addActionOption(
+			content,
+			EnhancedSettings::Option::ExtraContextMenuOptions.id,
+			[=] { Ui::show(Box<ExtraContextMenuBox>()); });
 
 		const auto repeaterSubWrap = content->add(
 			object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
@@ -1142,126 +852,28 @@ struct DecodeEnhancedSettingsResult {
 					EnhancedSettings::ExtraContextMenuOption::Repeater));
 			}));
 
-		const auto repeaterReplyToOrig = AddButtonWithIcon(
-				repeaterContent,
-				tr::lng_settings_repeater_reply_to_orig_msg(),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::RepeaterReplyToOriginal,
-			repeaterReplyToOrig);
-		repeaterReplyToOrig->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::RepeaterReplyToOriginal)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::RepeaterReplyToOriginal));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::RepeaterReplyToOriginal, toggled);
-		}, content->lifetime());
-
-		const auto replaceEditButton = AddButtonWithIcon(
-				content,
-				tr::lng_settings_replace_edit_button(),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::ReplaceEditButton,
-			replaceEditButton);
-		replaceEditButton->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::ReplaceEditButton)
-		)->toggledValue(
-		) | rpl::filter([](bool enabled) {
-			return (enabled != EnhancedSettings::Get(EnhancedSettings::Option::ReplaceEditButton));
-		}) | rpl::on_next([=](bool enabled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::ReplaceEditButton, enabled);
-		}, content->lifetime());
-
-		const auto skipMessage = AddButtonWithIcon(
-				content,
-				tr::lng_settings_skip_message(),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
+		addToggleOption(
+			repeaterContent,
+			EnhancedSettings::Option::RepeaterReplyToOriginal);
+		addToggleOption(content, EnhancedSettings::Option::ReplaceEditButton);
+		addToggleOption(
+			content,
 			EnhancedSettings::Option::SkipToNext,
-			skipMessage);
-		skipMessage->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::SkipToNext)
-		)->toggledValue(
-		) | rpl::filter([](bool enabled) {
-			return (enabled != EnhancedSettings::Get(EnhancedSettings::Option::SkipToNext));
-		}) | rpl::on_next([=](bool enabled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::SkipToNext, enabled);
-		}, content->lifetime());
-
-		AddDividerText(
-			content,
 			tr::lng_settings_skip_message_desc());
-
-		const auto communityChatClick = AddButtonWithIcon(
-				content,
-				tr::lng_settings_community_chat_click(),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::CommunityChatClick,
-			communityChatClick);
-		communityChatClick->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::CommunityChatClick)
-		)->toggledChanges(
-		) | rpl::filter([](bool enabled) {
-			return (enabled != EnhancedSettings::Get(EnhancedSettings::Option::CommunityChatClick));
-		}) | rpl::on_next([=](bool enabled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::CommunityChatClick, enabled);
-		}, content->lifetime());
-
-		const auto previewRules = AddButtonWithIcon(
+		addToggleOption(content, EnhancedSettings::Option::CommunityChatClick);
+		addActionOption(
 			content,
-			tr::lng_link_preview_rules_title(),
-			st::settingsButtonNoIcon);
-		registerHighlight(
-			EnhancedSettings::Option::LinkPreviewRules,
-			previewRules);
-		previewRules->addClickHandler([=] {
-			Ui::show(Box(LinkPreviewRulesBox));
-		});
+			EnhancedSettings::Option::LinkPreviewRules.id,
+			[=] { Ui::show(Box(LinkPreviewRulesBox)); });
 	}
 
 	void Enhanced::setupTranslation(not_null<Ui::VerticalLayout*> content) {
-		const auto useGtApi = AddButtonWithIcon(
-				content,
-				tr::lng_settings_use_gt_api(),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::UseGtApi,
-			useGtApi);
-		useGtApi->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::UseGtApi)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::UseGtApi));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::UseGtApi, toggled);
-		}, content->lifetime());
+		addToggleOption(content, EnhancedSettings::Option::UseGtApi);
 
-		QString langPackBaseId = Lang::GetInstance().baseId();
-		if (langPackBaseId == "zh-hant-raw" || langPackBaseId == "zh-hans-raw") {
-			const auto translateToTc = AddButtonWithIcon(
-					content,
-					tr::lng_settings_translate_to_tc(),
-					st::settingsButtonNoIcon
-			);
-			registerHighlight(
-			EnhancedSettings::Option::TranslateToTc,
-				translateToTc);
-			translateToTc->toggleOn(
-					EnhancedSettings::Watch(EnhancedSettings::Option::TranslateToTc)
-			)->toggledChanges(
-			) | rpl::filter([=](bool toggled) {
-				return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::TranslateToTc));
-			}) | rpl::on_next([=](bool toggled) {
-				EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::TranslateToTc, toggled);
-			}, content->lifetime());
+		const auto langPackBaseId = Lang::GetInstance().baseId();
+		if (langPackBaseId == u"zh-hant-raw"_q
+			|| langPackBaseId == u"zh-hans-raw"_q) {
+			addToggleOption(content, EnhancedSettings::Option::TranslateToTc);
 		}
 	}
 
@@ -1270,55 +882,16 @@ struct DecodeEnhancedSettingsResult {
 			page,
 			tr::lng_settings_voice_chat());
 
-		const auto radioController = AddButtonWithIcon(
-				voiceChatContent,
-				tr::lng_settings_radio_controller(),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::RadioController,
-			radioController);
-		radioController->addClickHandler([=] {
-			Ui::show(Box<RadioController>());
-		});
-
-		AddDividerText(voiceChatContent, tr::lng_radio_controller_desc());
-
-		const auto autoUnmute = AddButtonWithIcon(
-				voiceChatContent,
-				tr::lng_settings_auto_unmute(),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
+		addActionOption(
+			voiceChatContent,
+			EnhancedSettings::Option::RadioController.id,
+			[=] { Ui::show(Box<RadioController>()); },
+			tr::lng_radio_controller_desc());
+		addToggleOption(
+			voiceChatContent,
 			EnhancedSettings::Option::AutoUnmute,
-			autoUnmute);
-		autoUnmute->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::AutoUnmute)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::AutoUnmute));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::AutoUnmute, toggled);
-		}, voiceChatContent->lifetime());
-
-		AddDividerText(voiceChatContent, tr::lng_auto_unmute_desc());
-
-		const auto enableHdVideo = AddButtonWithIcon(
-				voiceChatContent,
-				tr::lng_settings_enable_hd_video(),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::HdVideo,
-			enableHdVideo);
-		enableHdVideo->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::HdVideo)
-		)->toggledChanges(
-		) | rpl::filter([=](bool toggled) {
-			return (toggled != EnhancedSettings::Get(EnhancedSettings::Option::HdVideo));
-		}) | rpl::on_next([=](bool toggled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::HdVideo, toggled);
-		}, voiceChatContent->lifetime());
+			tr::lng_auto_unmute_desc());
+		addToggleOption(voiceChatContent, EnhancedSettings::Option::HdVideo);
 
 		auto bitrateValue = EnhancedSettings::Watch(
 			EnhancedSettings::Option::Bitrate
@@ -1326,35 +899,12 @@ struct DecodeEnhancedSettingsResult {
 			return BitrateController::BitrateLabel(bitrate);
 		});
 
-		const auto bitrateController = AddButtonWithLabel(
-				page,
-				tr::lng_bitrate_controller(),
-				std::move(bitrateValue),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::Bitrate,
-			bitrateController);
-		bitrateController->addClickHandler([=] {
-			Ui::show(Box<BitrateController>());
-		});
-
-		const auto mprisCallHangup = AddButtonWithIcon(
-				page,
-				tr::lng_settings_mpris_call_hangup(),
-				st::settingsButtonNoIcon
-		);
-		registerHighlight(
-			EnhancedSettings::Option::MprisCallHangup,
-			mprisCallHangup);
-		mprisCallHangup->toggleOn(
-				EnhancedSettings::Watch(EnhancedSettings::Option::MprisCallHangup)
-		)->toggledValue(
-		) | rpl::filter([](bool enabled) {
-			return (enabled != EnhancedSettings::Get(EnhancedSettings::Option::MprisCallHangup));
-		}) | rpl::on_next([=](bool enabled) {
-			EnhancedSettings::ApplyOption(controller(), EnhancedSettings::Option::MprisCallHangup, enabled);
-		}, page->lifetime());
+		addLabeledActionOption(
+			page,
+			EnhancedSettings::Option::Bitrate.id,
+			std::move(bitrateValue),
+			[=] { Ui::show(Box<BitrateController>()); });
+		addToggleOption(page, EnhancedSettings::Option::MprisCallHangup);
 
 		AddSkip(page);
 	}

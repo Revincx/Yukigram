@@ -52,6 +52,9 @@ settingsAttentionButtonWithIcon: SettingsButton(settingsButton) {
 settingsExperimentalTitle: FlatLabel(defaultFlatLabel) {
 	minWidth: 100px;
 }
+settingsEnhancedAttentionTitle: FlatLabel(settingsExperimentalTitle) {
+	textFg: attentionButtonFg;
+}
 settingsExperimentalAbout: FlatLabel(defaultFlatLabel) {
 	textFg: windowSubTextFg;
 	minWidth: 100px;

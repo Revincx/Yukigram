@@ -48,6 +48,33 @@ namespace Settings {
 		void setupTranslation(not_null<Ui::VerticalLayout*> content);
 		void setupVoiceChat(not_null<Ui::VerticalLayout*> page);
 		void setupOther(not_null<Ui::VerticalLayout*> content);
+		[[nodiscard]] not_null<Button*> addOptionRow(
+			not_null<Ui::VerticalLayout*> content,
+			EnhancedSettings::OptionId id,
+			std::optional<rpl::producer<QString>> about = std::nullopt);
+		void addToggleOption(
+			not_null<Ui::VerticalLayout*> content,
+			EnhancedSettings::Key<bool> key,
+			std::optional<rpl::producer<QString>> about = std::nullopt);
+		void addActionOption(
+			not_null<Ui::VerticalLayout*> content,
+			EnhancedSettings::OptionId id,
+			Fn<void()> handler,
+			std::optional<rpl::producer<QString>> about = std::nullopt);
+		not_null<Button*> addLabeledOption(
+			not_null<Ui::VerticalLayout*> content,
+			EnhancedSettings::OptionId id,
+			rpl::producer<QString> label);
+		void addLabeledActionOption(
+			not_null<Ui::VerticalLayout*> content,
+			EnhancedSettings::OptionId id,
+			rpl::producer<QString> label,
+			Fn<void()> handler);
+		void addIntegerSliderOption(
+			not_null<Ui::VerticalLayout*> content,
+			EnhancedSettings::Key<int> key,
+			Fn<QString(int)> label,
+			bool zeroAsMaximum = false);
 		template <typename Value>
 		void registerHighlight(
 				EnhancedSettings::Key<Value> key,
