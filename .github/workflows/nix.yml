@@ -11,7 +11,7 @@ jobs:
           submodules: recursive
           clean: false
       - name: Install nix
-        uses: cachix/install-nix-action@v27
+        uses: cachix/install-nix-action@v31
       - name: Magic cache
         uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Setup cachix
