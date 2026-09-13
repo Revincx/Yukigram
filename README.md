@@ -31,6 +31,11 @@ In addition, Yurigram includes the following features, listed in the order they 
  19. Add new option to show detailed media metadata information in media viewer
  20. **Ability to search messages with both user and message type filters enabled in groups**
  21. Add new forward option to add spoiler to forwarded media
+ 22. Show online indicator on user avatar in group chats
+ 23. Add option to send the comment message after forwarding messages
+ 24. Add option to disable syncing local message drafts to cloud.
+ 25. **Ability to replace link preview domains with custom regex rules.**
+ 26. **Import/Export/Share any enhanced setting value with deep links.**
 
 And more new features will ~~(may)~~ be added in the future.
 
